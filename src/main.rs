@@ -2,10 +2,22 @@ mod file_io;
 mod matching;
 mod structs;
 
+use clap::Parser;
 use file_io::{read_participants, write_matches};
 use matching::match_participants;
 
+#[derive(Parser, Debug)]
+#[command(author, version, about, long_about = None)]
+struct Args {
+    /// Whether the output should be saved to matches.json
+    #[arg(short, long, default_value_t = false)]
+    silent: bool,
+}
+
 fn main() {
+    let args = Args::parse();
+    let Args { silent } = args;
+
     // Read participants JSON file
     let participants_data = read_participants("./data/participants.json");
 
@@ -28,5 +40,7 @@ Viel Spaß 😊
     }
 
     // Save matches to JSON file
-    write_matches("./data/matches.json", matching_round);
+    if !silent {
+        write_matches("./data/matches.json", matching_round);
+    }
 }
