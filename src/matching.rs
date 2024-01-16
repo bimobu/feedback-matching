@@ -18,9 +18,6 @@ pub fn match_participants(
     let mut unmatched_receivers = participants_file.participants.clone();
     unmatched_receivers.shuffle(rng);
 
-    println!("{:#?}", unmatched_givers);
-    println!("{:#?}", unmatched_receivers);
-
     while !unmatched_givers.is_empty() {
         if unmatched_givers.len() == 2 {
             if unmatched_givers[0].id == unmatched_receivers[0].id
@@ -93,16 +90,19 @@ mod tests {
                     id: 1,
                     first_name: "John".to_string(),
                     last_name: "Doe".to_string(),
+                    gender: crate::structs::participant::Gender::Male,
                 },
                 Participant {
                     id: 2,
                     first_name: "Jane".to_string(),
                     last_name: "Smith".to_string(),
+                    gender: crate::structs::participant::Gender::Female,
                 },
                 Participant {
                     id: 3,
                     first_name: "Bob".to_string(),
                     last_name: "Johnson".to_string(),
+                    gender: crate::structs::participant::Gender::Male,
                 },
             ],
         };
@@ -145,6 +145,7 @@ mod tests {
                 id: 1,
                 first_name: "John".to_string(),
                 last_name: "Doe".to_string(),
+                gender: crate::structs::participant::Gender::Male,
             }],
         };
         let mut rng = get_seeded_rng();

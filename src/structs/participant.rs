@@ -1,10 +1,17 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub enum Gender {
+    Male,
+    Female,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Participant {
     pub id: u32,
     pub first_name: String,
     pub last_name: String,
+    pub gender: Gender,
 }
 
 impl Participant {
