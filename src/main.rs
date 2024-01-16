@@ -5,6 +5,8 @@ mod structs;
 use clap::Parser;
 use file_io::{read_participants, write_matches};
 use matching::match_participants;
+use rand::SeedableRng;
+use rand_chacha::ChaCha8Rng;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -19,10 +21,11 @@ fn main() {
     let Args { silent } = args;
 
     // Read participants JSON file
-    let participants_data = read_participants("./data/participants.json");
+    let participants_file = read_participants("./data/participants.json");
 
     // Match participants
-    let matching_round = match_participants(&participants_data);
+    let mut rng = ChaCha8Rng::from_entropy();
+    let matching_round = match_participants(&participants_file, &mut rng);
 
     // Print messages
     println!("\n");
