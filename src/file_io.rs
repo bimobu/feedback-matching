@@ -1,17 +1,20 @@
 use crate::structs::matching_round::MatchingRound;
-use crate::structs::participants_file::ParticipantsFile;
 
+use serde::de::DeserializeOwned;
 use serde_json::from_reader;
 use std::fs::{File, OpenOptions};
 use std::io::{Read, Seek, SeekFrom};
 
-pub fn read_participants(file_path: &str) -> ParticipantsFile {
-    let mut file = File::open(file_path).expect("Failed to open participants file");
+pub fn read<T>(file_path: &str) -> T
+where
+    T: DeserializeOwned,
+{
+    let mut file = File::open(file_path).expect("Failed to open JSON file");
     let mut contents = String::new();
     file.read_to_string(&mut contents)
-        .expect("Failed to read participants file");
+        .expect("Failed to read JSON file");
 
-    from_reader(contents.as_bytes()).expect("Failed to parse participants JSON")
+    from_reader(contents.as_bytes()).expect("Failed to parse JSON")
 }
 
 pub fn write_matches(file_path: &str, round: MatchingRound) {

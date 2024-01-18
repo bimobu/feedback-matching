@@ -3,12 +3,14 @@ mod matching;
 mod structs;
 
 use clap::Parser;
-use file_io::{read_participants, write_matches};
+use file_io::{read, write_matches};
 use matching::match_participants;
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
 
-use crate::structs::participant::Gender;
+use crate::structs::{
+    matching_round::MatchingRound, participant::Gender, participants_file::ParticipantsFile,
+};
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -22,12 +24,13 @@ fn main() {
     let args = Args::parse();
     let Args { silent } = args;
 
-    // Read participants JSON file
-    let participants_file = read_participants("./data/participants.json");
+    // Read JSON Data
+    let participants_file = read::<ParticipantsFile>("./data/participants.json");
+    let past_matching_rounds = read::<Vec<MatchingRound>>("./data/matches.json");
 
     // Match participants
     let mut rng = ChaCha8Rng::from_entropy();
-    let matching_round = match_participants(&participants_file, &mut rng);
+    let matching_round = match_participants(&participants_file, &past_matching_rounds, &mut rng);
 
     // Print messages
     println!("\n");
@@ -47,13 +50,13 @@ fn main() {
             Gender::Female => "Sie",
         };
         println!(
-            "Hi {giver_first_name} 😊 Dein Feedbackempfänger für die nächsten zwei Wochen ist {receiver_full_name}. \n
-Deine Aufgabe ist es, die nächsten zwei Wochen etwas auf {ihn_sie} zu achten und {ihm_ihr} am Ende dieser zwei Wochen Feedback zu geben. \
-Das Feedback sollte im Idealfall so Sachen wie das Verhalten in und außerhalb von Meetings, Verhalten im Team, Code, Eigeninitiative etc. enthalten. \
-Mache am Ende der zwei Wochen bitte selber einen Termin mit {ihm_ihr} aus um {ihm_ihr} das Feedback zu geben. {er_sie} selber weiß ja nicht, wer {ihm_ihr} das Feedback geben wird. \n
-Viel Spaß 😊
----"
-        );
+                "Hi {giver_first_name} 😊 Dein Feedbackempfänger für die nächsten zwei Wochen ist {receiver_full_name}. \n
+    Deine Aufgabe ist es, die nächsten zwei Wochen etwas auf {ihn_sie} zu achten und {ihm_ihr} am Ende dieser zwei Wochen Feedback zu geben. \
+    Das Feedback sollte im Idealfall so Sachen wie das Verhalten in und außerhalb von Meetings, Verhalten im Team, Code, Eigeninitiative etc. enthalten. \
+    Mache am Ende der zwei Wochen bitte selber einen Termin mit {ihm_ihr} aus um {ihm_ihr} das Feedback zu geben. {er_sie} selber weiß ja nicht, wer {ihm_ihr} das Feedback geben wird. \n
+    Viel Spaß 😊
+    ---"
+            );
     }
 
     // Save matches to JSON file
