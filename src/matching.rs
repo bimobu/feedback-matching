@@ -3,12 +3,13 @@ use crate::structs::participant::Participant;
 use crate::structs::participants_file::ParticipantsFile;
 use crate::structs::r#match::Match;
 
-use chrono::prelude::*;
 use rand::seq::SliceRandom;
 use rand::Rng;
+use time::OffsetDateTime;
 
 pub fn match_participants(
     participants_file: &ParticipantsFile,
+    _past_matching_rounds: &Vec<MatchingRound>,
     rng: &mut impl Rng,
 ) -> MatchingRound {
     let mut matches: Vec<Match> = Vec::new();
@@ -54,7 +55,7 @@ pub fn match_participants(
 
     // Create and serialize the MatchingRound struct
     let matching_round = MatchingRound {
-        date: Utc::now().to_string(),
+        date: OffsetDateTime::now_utc().date(),
         matches,
     };
 
@@ -70,11 +71,13 @@ fn create_match(giver: Participant, receiver: Participant) -> Match {
 
 #[cfg(test)]
 mod tests {
+    use crate::structs::participant::Gender;
+
     use super::*;
-    use crate::structs::participant::Participant;
     use pretty_assertions::assert_eq;
     use rand::SeedableRng;
     use rand_chacha::ChaCha8Rng;
+    use time::Date;
 
     fn get_seeded_rng() -> ChaCha8Rng {
         let rng = ChaCha8Rng::seed_from_u64(14);
@@ -90,26 +93,74 @@ mod tests {
                     id: 1,
                     first_name: "John".to_string(),
                     last_name: "Doe".to_string(),
-                    gender: crate::structs::participant::Gender::Male,
+                    gender: Gender::Male,
                 },
                 Participant {
                     id: 2,
                     first_name: "Jane".to_string(),
                     last_name: "Smith".to_string(),
-                    gender: crate::structs::participant::Gender::Female,
+                    gender: Gender::Female,
                 },
                 Participant {
                     id: 3,
                     first_name: "Bob".to_string(),
                     last_name: "Johnson".to_string(),
-                    gender: crate::structs::participant::Gender::Male,
+                    gender: Gender::Male,
                 },
             ],
         };
+        let past_matching_rounds: Vec<MatchingRound> = vec![MatchingRound {
+            date: Date::from_calendar_date(2024, time::Month::January, 11).expect(""),
+            matches: vec![
+                Match {
+                    giver: Participant {
+                        id: 1,
+                        first_name: "John".to_string(),
+                        last_name: "Doe".to_string(),
+                        gender: Gender::Male,
+                    },
+                    receiver: Participant {
+                        id: 3,
+                        first_name: "Bob".to_string(),
+                        last_name: "Johnson".to_string(),
+                        gender: Gender::Male,
+                    },
+                },
+                Match {
+                    giver: Participant {
+                        id: 3,
+                        first_name: "Bob".to_string(),
+                        last_name: "Johnson".to_string(),
+                        gender: Gender::Male,
+                    },
+                    receiver: Participant {
+                        id: 2,
+                        first_name: "Jane".to_string(),
+                        last_name: "Smith".to_string(),
+                        gender: Gender::Female,
+                    },
+                },
+                Match {
+                    giver: Participant {
+                        id: 2,
+                        first_name: "Jane".to_string(),
+                        last_name: "Smith".to_string(),
+                        gender: Gender::Female,
+                    },
+                    receiver: Participant {
+                        id: 1,
+                        first_name: "John".to_string(),
+                        last_name: "Doe".to_string(),
+                        gender: Gender::Male,
+                    },
+                },
+            ],
+        }];
         let mut rng = get_seeded_rng();
 
         // Act
-        let matching_round = match_participants(&participants_data, &mut rng);
+        let matching_round =
+            match_participants(&participants_data, &past_matching_rounds, &mut rng);
 
         // Assert
         assert_eq!(
@@ -128,10 +179,12 @@ mod tests {
         let participants_data = ParticipantsFile {
             participants: vec![],
         };
+        let past_matching_rounds = vec![];
         let mut rng = get_seeded_rng();
 
         // Act
-        let matching_round = match_participants(&participants_data, &mut rng);
+        let matching_round =
+            match_participants(&participants_data, &past_matching_rounds, &mut rng);
 
         // Assert
         assert!(matching_round.matches.is_empty());
@@ -148,10 +201,12 @@ mod tests {
                 gender: crate::structs::participant::Gender::Male,
             }],
         };
+        let past_matching_rounds = vec![];
         let mut rng = get_seeded_rng();
 
         // Act
-        let matching_round = match_participants(&participants_data, &mut rng);
+        let matching_round =
+            match_participants(&participants_data, &past_matching_rounds, &mut rng);
 
         // Assert
         assert!(matching_round.matches.is_empty());
