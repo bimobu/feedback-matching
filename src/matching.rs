@@ -23,7 +23,6 @@ pub fn match_participants(
     let unmatched_givers = participants_file.participants.clone();
     let unmatched_receivers = participants_file.participants.clone();
 
-    // TODO use a sorted list instead of the second hashmap
     let priority_map = get_priority_map(
         past_matching_rounds,
         &unmatched_givers,
@@ -32,7 +31,6 @@ pub fn match_participants(
 
     let matches = get_matches(&unmatched_givers, priority_map, rng);
 
-    // Create and serialize the MatchingRound struct
     let next_matching_round_id = get_next_matching_round_id(past_matching_rounds);
     let matching_round = MatchingRound {
         id: next_matching_round_id,
