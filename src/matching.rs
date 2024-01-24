@@ -33,12 +33,23 @@ pub fn match_participants(
     let matches = get_matches(&unmatched_givers, priority_map, rng);
 
     // Create and serialize the MatchingRound struct
+    let next_matching_round_id = get_next_matching_round_id(past_matching_rounds);
     let matching_round = MatchingRound {
+        id: next_matching_round_id,
         date: OffsetDateTime::now_utc().date(),
         matches,
     };
 
     matching_round
+}
+
+fn get_next_matching_round_id(past_matching_rounds: &Vec<MatchingRound>) -> i32 {
+    let last_matching_round = past_matching_rounds.last();
+
+    return match last_matching_round {
+        Some(matching_round) => matching_round.id + 1,
+        None => 1,
+    };
 }
 
 fn get_matches(
@@ -205,6 +216,7 @@ mod tests {
             ],
         };
         let past_matching_rounds: Vec<MatchingRound> = vec![MatchingRound {
+            id: 1,
             date: Date::from_calendar_date(2024, time::Month::January, 11).expect(""),
             matches: vec![
                 Match {

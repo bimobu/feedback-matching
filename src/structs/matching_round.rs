@@ -4,6 +4,7 @@ use time::Date;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct MatchingRound {
+    pub id: i32,
     pub date: Date,
     pub matches: Vec<Match>,
 }
