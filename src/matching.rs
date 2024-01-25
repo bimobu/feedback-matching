@@ -7,7 +7,6 @@ use rand::seq::SliceRandom;
 use rand::Rng;
 use std::collections::HashMap;
 use std::collections::HashSet;
-use time::Duration;
 use time::OffsetDateTime;
 
 struct ParticipantWithPriority {
@@ -19,17 +18,15 @@ pub fn match_participants(
     participants_file: &ParticipantsFile,
     past_matching_rounds: &Vec<MatchingRound>,
     rng: &mut impl Rng,
-) -> MatchingRound {
+) -> (MatchingRound, i64) {
     let unmatched_givers = participants_file.participants.clone();
     let unmatched_receivers = participants_file.participants.clone();
 
-    let priority_map = get_priority_map(
-        past_matching_rounds,
-        &unmatched_givers,
-        &unmatched_receivers,
-    );
+    let last_match_map = get_last_match_map(past_matching_rounds);
+    let priority_map = get_priority_map(&last_match_map, &unmatched_givers, &unmatched_receivers);
 
     let matches = get_matches(&unmatched_givers, priority_map, rng);
+    let score = score_matches(&last_match_map, &matches);
 
     let next_matching_round_id = get_next_matching_round_id(past_matching_rounds);
     let matching_round = MatchingRound {
@@ -38,16 +35,93 @@ pub fn match_participants(
         matches,
     };
 
-    matching_round
+    (matching_round, score)
 }
 
-fn get_next_matching_round_id(past_matching_rounds: &Vec<MatchingRound>) -> i32 {
-    let last_matching_round = past_matching_rounds.last();
+fn score_matches(last_match_map: &HashMap<(u32, u32), i64>, matches: &Vec<Match>) -> i64 {
+    let days_since_last_matches: Vec<i64> = matches
+        .iter()
+        .map(|m| get_days_since_last_match(last_match_map, m.giver.id, m.receiver.id))
+        .collect();
 
-    return match last_matching_round {
-        Some(matching_round) => matching_round.id + 1,
-        None => 1,
+    let min_days_since_last_match = days_since_last_matches.iter().min();
+
+    match min_days_since_last_match {
+        Some(min_days_since_last_match) => *min_days_since_last_match,
+        None => 0,
+    }
+}
+
+fn get_days_since_last_match(
+    last_match_map: &HashMap<(u32, u32), i64>,
+    giver_id: u32,
+    receiver_id: u32,
+) -> i64 {
+    let days_since_last_match_option = last_match_map.get(&(giver_id, receiver_id));
+
+    let days_since_last_match = match &days_since_last_match_option {
+        Some(duration) => **duration,
+        None => i64::MAX,
     };
+
+    return days_since_last_match;
+}
+
+fn get_last_match_map(past_matching_rounds: &Vec<MatchingRound>) -> HashMap<(u32, u32), i64> {
+    let mut last_match_map: HashMap<(u32, u32), i64> = HashMap::new();
+
+    for matching_round in past_matching_rounds {
+        let days_since_matching_round = get_days_since_matching_round(matching_round);
+
+        for past_match in &matching_round.matches {
+            last_match_map.insert(
+                (past_match.giver.id, past_match.receiver.id),
+                days_since_matching_round,
+            );
+        }
+    }
+
+    return last_match_map;
+}
+
+fn get_days_since_matching_round(matching_round: &MatchingRound) -> i64 {
+    let today = OffsetDateTime::now_utc().date();
+    let time_since_last_match = today - matching_round.date;
+    return time_since_last_match.whole_days();
+}
+
+fn get_priority_map(
+    last_match_map: &HashMap<(u32, u32), i64>,
+    unmatched_givers: &Vec<Participant>,
+    unmatched_receivers: &Vec<Participant>,
+) -> HashMap<u32, Vec<Participant>> {
+    let mut priority_map: HashMap<u32, Vec<Participant>> = HashMap::new();
+
+    for giver in unmatched_givers {
+        let mut participants_with_priorities: Vec<ParticipantWithPriority> = Vec::new();
+
+        for receiver in unmatched_receivers {
+            if giver.id == receiver.id {
+                continue;
+            }
+
+            participants_with_priorities.push(ParticipantWithPriority {
+                participant: receiver.clone(),
+                priority: get_days_since_last_match(&last_match_map, giver.id, receiver.id),
+            });
+        }
+
+        participants_with_priorities.sort_by(|a, b| b.priority.cmp(&a.priority));
+
+        let recievers_sorted_by_priority: Vec<Participant> = participants_with_priorities
+            .iter()
+            .map(|p| p.participant.clone())
+            .collect();
+
+        priority_map.insert(giver.id, recievers_sorted_by_priority);
+    }
+
+    return priority_map;
 }
 
 fn get_matches(
@@ -107,69 +181,19 @@ fn get_optimal_receiver<'a>(
     None
 }
 
-fn get_priority_map(
-    past_matching_rounds: &Vec<MatchingRound>,
-    unmatched_givers: &Vec<Participant>,
-    unmatched_receivers: &Vec<Participant>,
-) -> HashMap<u32, Vec<Participant>> {
-    let last_match_map = get_last_match_map(past_matching_rounds);
-
-    let mut priority_map: HashMap<u32, Vec<Participant>> = HashMap::new();
-
-    for giver in unmatched_givers {
-        let mut participants_with_priorities: Vec<ParticipantWithPriority> = Vec::new();
-
-        for receiver in unmatched_receivers {
-            if giver.id == receiver.id {
-                continue;
-            }
-
-            let duration_since_last_match = last_match_map.get(&(giver.id, receiver.id));
-            let days_since_last_match = match &duration_since_last_match {
-                Some(duration) => duration.whole_days(),
-                None => i64::MAX,
-            };
-
-            participants_with_priorities.push(ParticipantWithPriority {
-                participant: receiver.clone(),
-                priority: days_since_last_match,
-            });
-        }
-
-        participants_with_priorities.sort_by(|a, b| b.priority.cmp(&a.priority));
-
-        let recievers_sorted_by_priority: Vec<Participant> = participants_with_priorities
-            .iter()
-            .map(|p| p.participant.clone())
-            .collect();
-
-        priority_map.insert(giver.id, recievers_sorted_by_priority);
-    }
-
-    return priority_map;
-}
-
-fn get_last_match_map(past_matching_rounds: &Vec<MatchingRound>) -> HashMap<(u32, u32), Duration> {
-    let mut last_match_map: HashMap<(u32, u32), Duration> = HashMap::new();
-    let today = OffsetDateTime::now_utc().date();
-
-    for matching_round in past_matching_rounds {
-        for past_match in &matching_round.matches {
-            let time_since_last_match = today - matching_round.date;
-            last_match_map.insert(
-                (past_match.giver.id, past_match.receiver.id),
-                time_since_last_match,
-            );
-        }
-    }
-
-    return last_match_map;
-}
-
 fn create_match(giver: Participant, receiver: Participant) -> Match {
     return Match {
         giver: giver.clone(),
         receiver: receiver.clone(),
+    };
+}
+
+fn get_next_matching_round_id(past_matching_rounds: &Vec<MatchingRound>) -> i32 {
+    let last_matching_round = past_matching_rounds.last();
+
+    return match last_matching_round {
+        Some(matching_round) => matching_round.id + 1,
+        None => 1,
     };
 }
 
@@ -264,7 +288,7 @@ mod tests {
         let mut rng = get_seeded_rng();
 
         // Act
-        let matching_round =
+        let (matching_round, score) =
             match_participants(&participants_data, &past_matching_rounds, &mut rng);
 
         // Assert
@@ -288,7 +312,7 @@ mod tests {
         let mut rng = get_seeded_rng();
 
         // Act
-        let matching_round =
+        let (matching_round, score) =
             match_participants(&participants_data, &past_matching_rounds, &mut rng);
 
         // Assert
@@ -310,7 +334,7 @@ mod tests {
         let mut rng = get_seeded_rng();
 
         // Act
-        let matching_round =
+        let (matching_round, score) =
             match_participants(&participants_data, &past_matching_rounds, &mut rng);
 
         // Assert

@@ -77,7 +77,7 @@ fn print_messages_for_past_round(matching_round_id: Option<i32>) {
                     print_messages_for_round(matching_round);
                 }
                 None => {
-                    println!("No matches have been created yet.");
+                    println!("No matching round with id {matching_round_id} has been found");
                 }
             };
         }
@@ -91,7 +91,8 @@ fn create_match(silent_messages: bool, silent_json: bool) {
 
     // Match participants
     let mut rng = ChaCha8Rng::from_entropy();
-    let matching_round = match_participants(&participants_file, &past_matching_rounds, &mut rng);
+    let (matching_round, score) =
+        match_participants(&participants_file, &past_matching_rounds, &mut rng);
 
     // Print messages
     if !silent_messages {
@@ -102,4 +103,6 @@ fn create_match(silent_messages: bool, silent_json: bool) {
     if !silent_json {
         write_matches("./data/matches.json", matching_round);
     }
+
+    println!("Score of the matching round: {:#?}", score);
 }
