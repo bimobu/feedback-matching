@@ -22,11 +22,12 @@ pub fn match_participants(
     let unmatched_givers = participants_file.participants.clone();
     let unmatched_receivers = participants_file.participants.clone();
 
-    let last_match_map = get_last_match_map(past_matching_rounds);
-    let priority_map = get_priority_map(&last_match_map, &unmatched_givers, &unmatched_receivers);
-
-    let matches = get_matches(&unmatched_givers, priority_map, rng);
-    let score = score_matches(&last_match_map, &matches);
+    let (matches, score) = get_good_matches(
+        &unmatched_givers,
+        &unmatched_receivers,
+        &past_matching_rounds,
+        rng,
+    );
 
     let next_matching_round_id = get_next_matching_round_id(past_matching_rounds);
     let matching_round = MatchingRound {
@@ -38,33 +39,41 @@ pub fn match_participants(
     (matching_round, score)
 }
 
-fn score_matches(last_match_map: &HashMap<(u32, u32), i64>, matches: &Vec<Match>) -> i64 {
-    let days_since_last_matches: Vec<i64> = matches
-        .iter()
-        .map(|m| get_days_since_last_match(last_match_map, m.giver.id, m.receiver.id))
-        .collect();
+fn get_good_matches(
+    unmatched_givers: &Vec<Participant>,
+    unmatched_receivers: &Vec<Participant>,
+    past_matching_rounds: &Vec<MatchingRound>,
+    rng: &mut impl Rng,
+) -> (Vec<Match>, i64) {
+    let last_match_map = get_last_match_map(past_matching_rounds);
+    let priority_map =
+        get_priority_map(&last_match_map, unmatched_givers, unmatched_receivers, rng);
 
-    let min_days_since_last_match = days_since_last_matches.iter().min();
+    let mut matches_with_scores = Vec::new();
 
-    match min_days_since_last_match {
-        Some(min_days_since_last_match) => *min_days_since_last_match,
-        None => 0,
+    for _ in 0..5 {
+        let matches = get_matches(&unmatched_givers, &priority_map, rng);
+
+        match matches {
+            Some(matches) => {
+                let score = score_matches(&last_match_map, &matches);
+
+                if score == i64::MAX {
+                    return (matches, score);
+                }
+
+                matches_with_scores.push((matches, score));
+            }
+            None => continue,
+        }
     }
-}
 
-fn get_days_since_last_match(
-    last_match_map: &HashMap<(u32, u32), i64>,
-    giver_id: u32,
-    receiver_id: u32,
-) -> i64 {
-    let days_since_last_match_option = last_match_map.get(&(giver_id, receiver_id));
+    let good_matches_and_score = matches_with_scores
+        .iter()
+        .max_by(|ms1, ms2| ms1.1.cmp(&ms2.1))
+        .unwrap();
 
-    let days_since_last_match = match &days_since_last_match_option {
-        Some(duration) => **duration,
-        None => i64::MAX,
-    };
-
-    return days_since_last_match;
+    good_matches_and_score.clone()
 }
 
 fn get_last_match_map(past_matching_rounds: &Vec<MatchingRound>) -> HashMap<(u32, u32), i64> {
@@ -94,13 +103,16 @@ fn get_priority_map(
     last_match_map: &HashMap<(u32, u32), i64>,
     unmatched_givers: &Vec<Participant>,
     unmatched_receivers: &Vec<Participant>,
+    rng: &mut impl Rng,
 ) -> HashMap<u32, Vec<Participant>> {
     let mut priority_map: HashMap<u32, Vec<Participant>> = HashMap::new();
+    let mut cloned_unmatched_receivers = unmatched_receivers.clone();
+    cloned_unmatched_receivers.shuffle(rng);
 
     for giver in unmatched_givers {
         let mut participants_with_priorities: Vec<ParticipantWithPriority> = Vec::new();
 
-        for receiver in unmatched_receivers {
+        for receiver in &cloned_unmatched_receivers {
             if giver.id == receiver.id {
                 continue;
             }
@@ -126,9 +138,9 @@ fn get_priority_map(
 
 fn get_matches(
     unmatched_givers: &Vec<Participant>,
-    priority_map: HashMap<u32, Vec<Participant>>,
+    priority_map: &HashMap<u32, Vec<Participant>>,
     rng: &mut impl Rng,
-) -> Vec<Match> {
+) -> Option<Vec<Match>> {
     let mut matches: Vec<Match> = Vec::new();
 
     let mut cloned_unmatched_givers = unmatched_givers.clone();
@@ -151,21 +163,22 @@ fn get_matches(
         let receiver_option =
             get_optimal_receiver(&matched_receiver_ids, recievers_sorted_by_priority);
 
-        if receiver_option.is_none() {
-            panic!("No receiver found for giver {giver_id}");
+        match receiver_option {
+            Some(receiver) => {
+                matches.push(create_match(
+                    cloned_unmatched_givers.remove(0),
+                    receiver.clone(),
+                ));
+
+                matched_receiver_ids.insert(receiver.id);
+            }
+            None => {
+                return None;
+            }
         }
-
-        let receiver = receiver_option.unwrap();
-
-        matches.push(create_match(
-            cloned_unmatched_givers.remove(0),
-            receiver.clone(),
-        ));
-
-        matched_receiver_ids.insert(receiver.id);
     }
 
-    return matches;
+    return Some(matches);
 }
 
 fn get_optimal_receiver<'a>(
@@ -186,6 +199,35 @@ fn create_match(giver: Participant, receiver: Participant) -> Match {
         giver: giver.clone(),
         receiver: receiver.clone(),
     };
+}
+
+fn score_matches(last_match_map: &HashMap<(u32, u32), i64>, matches: &Vec<Match>) -> i64 {
+    let days_since_last_matches: Vec<i64> = matches
+        .iter()
+        .map(|m| get_days_since_last_match(last_match_map, m.giver.id, m.receiver.id))
+        .collect();
+
+    let min_days_since_last_match = days_since_last_matches.iter().min();
+
+    match min_days_since_last_match {
+        Some(min_days_since_last_match) => *min_days_since_last_match,
+        None => 0,
+    }
+}
+
+fn get_days_since_last_match(
+    last_match_map: &HashMap<(u32, u32), i64>,
+    giver_id: u32,
+    receiver_id: u32,
+) -> i64 {
+    let days_since_last_match_option = last_match_map.get(&(giver_id, receiver_id));
+
+    let days_since_last_match = match &days_since_last_match_option {
+        Some(duration) => **duration,
+        None => i64::MAX,
+    };
+
+    days_since_last_match
 }
 
 fn get_next_matching_round_id(past_matching_rounds: &Vec<MatchingRound>) -> i32 {
@@ -288,7 +330,7 @@ mod tests {
         let mut rng = get_seeded_rng();
 
         // Act
-        let (matching_round, score) =
+        let (matching_round, _) =
             match_participants(&participants_data, &past_matching_rounds, &mut rng);
 
         // Assert
@@ -312,7 +354,7 @@ mod tests {
         let mut rng = get_seeded_rng();
 
         // Act
-        let (matching_round, score) =
+        let (matching_round, _) =
             match_participants(&participants_data, &past_matching_rounds, &mut rng);
 
         // Assert
@@ -334,110 +376,10 @@ mod tests {
         let mut rng = get_seeded_rng();
 
         // Act
-        let (matching_round, score) =
+        let (matching_round, _) =
             match_participants(&participants_data, &past_matching_rounds, &mut rng);
 
         // Assert
         assert!(matching_round.matches.is_empty());
     }
 }
-
-// pub fn match_participants(
-//     participants_file: &ParticipantsFile,
-//     past_matching_rounds: &Vec<MatchingRound>,
-//     rng: &mut impl Rng,
-// ) -> MatchingRound {
-//     let mut matches: Vec<Match> = Vec::new();
-
-//     let mut unmatched_givers = participants_file.participants.clone();
-//     let mut unmatched_receivers = participants_file.participants.clone();
-
-//     let priority_map = get_priority_map(
-//         past_matching_rounds,
-//         &unmatched_givers,
-//         &unmatched_receivers,
-//     );
-
-//     // TODO turn these into maps (how are they iterated over, is it then always the same order?)
-//     unmatched_givers.shuffle(rng);
-//     unmatched_receivers.shuffle(rng);
-
-//     while !unmatched_givers.is_empty() {
-//         let giver = &unmatched_givers[0];
-//         let giver_id = giver.id;
-
-//         let giver_priority_map = priority_map.get(&giver_id);
-
-//         if giver_priority_map.is_none() {
-//             panic!("No priority map for giver {giver_id}");
-//         }
-
-//         let giver_priority_map = giver_priority_map.unwrap();
-
-//         if unmatched_givers.len() == 2 {
-//             let unmatched_giver_ids: Vec<u32> = unmatched_givers.iter().map(|p| p.id).collect();
-//             let unmatched_receiver_ids: Vec<u32> =
-//                 unmatched_receivers.iter().map(|p| p.id).collect();
-
-//             let unmatched_givers_set: HashSet<u32> = unmatched_giver_ids.into_iter().collect();
-//             let unmatched_receivers_set: HashSet<u32> =
-//                 unmatched_receiver_ids.into_iter().collect();
-
-//             let intersection: Vec<&u32> = unmatched_givers_set
-//                 .intersection(&unmatched_receivers_set)
-//                 .collect();
-
-//             if intersection.len() == 2 {
-//                 if unmatched_givers[0].id == unmatched_receivers[0].id
-//                     || unmatched_givers[1].id == unmatched_receivers[1].id
-//                 {
-//                     matches.push(create_match(
-//                         unmatched_givers.remove(1),
-//                         unmatched_receivers.remove(0),
-//                     ));
-//                 } else {
-//                     matches.push(create_match(
-//                         unmatched_givers.remove(0),
-//                         unmatched_receivers.remove(0),
-//                     ));
-//                 }
-//             } else if intersection.len() == 1 {
-//                 if unmatched_givers[0].id == unmatched_receivers[0].id {
-//                     matches.push(create_match(
-//                         unmatched_givers.remove(1),
-//                         unmatched_receivers.remove(0),
-//                     ));
-//                 } else {
-//                     matches.push(create_match(
-//                         unmatched_givers.remove(0),
-//                         unmatched_receivers.remove(0),
-//                     ));
-//                 }
-//             } else {
-//                 let receiver_index =
-//                     get_optimal_receiver_index(&unmatched_receivers, giver_priority_map);
-
-//                 matches.push(create_match(
-//                     unmatched_givers.remove(0),
-//                     unmatched_receivers.remove(receiver_index),
-//                 ))
-//             }
-//         } else {
-//             let receiver_index =
-//                 get_optimal_receiver_index(&unmatched_receivers, giver_priority_map);
-
-//             matches.push(create_match(
-//                 unmatched_givers.remove(0),
-//                 unmatched_receivers.remove(receiver_index),
-//             ))
-//         }
-//     }
-
-//     // Create and serialize the MatchingRound struct
-//     let matching_round = MatchingRound {
-//         date: OffsetDateTime::now_utc().date(),
-//         matches,
-//     };
-
-//     matching_round
-// }
