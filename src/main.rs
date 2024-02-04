@@ -17,6 +17,9 @@ use crate::structs::{matching_round::MatchingRound, participants_file::Participa
 struct Args {
     #[command(subcommand)]
     command: Commands,
+    /// The path to the directory where matches and participants are saved
+    #[arg(short, long, default_value_t = {"./data/".to_string()})]
+    data_path: String,
 }
 
 #[derive(Subcommand, Debug)]
@@ -38,21 +41,29 @@ enum Commands {
 }
 
 fn main() {
-    let Args { command } = Args::parse();
+    let Args { command, data_path } = Args::parse();
 
     match command {
         Commands::PastMatchMessages { matching_round_id } => {
-            print_messages_for_past_round(matching_round_id)
+            print_messages_for_past_round(matching_round_id, &data_path)
         }
         Commands::CreateMatch {
             json_silent: silent_json,
             messages_silent: silent_messages,
-        } => create_match(silent_messages, silent_json),
+        } => create_match(silent_messages, silent_json, &data_path),
     }
 }
 
-fn print_messages_for_past_round(matching_round_id: Option<i32>) {
-    let past_matching_rounds = read::<Vec<MatchingRound>>("./data/matches.json");
+fn matches_file_path(data_path: &String) -> String {
+    format!("{}/matches.json", data_path)
+}
+
+fn participants_file_path(data_path: &String) -> String {
+    format!("{}/participants.json", data_path)
+}
+
+fn print_messages_for_past_round(matching_round_id: Option<i32>, data_path: &String) {
+    let past_matching_rounds = read::<Vec<MatchingRound>>(&matches_file_path(data_path));
 
     match matching_round_id {
         None => {
@@ -84,10 +95,10 @@ fn print_messages_for_past_round(matching_round_id: Option<i32>) {
     }
 }
 
-fn create_match(silent_messages: bool, silent_json: bool) {
+fn create_match(silent_messages: bool, silent_json: bool, data_path: &String) {
     // Read JSON Data
-    let participants_file = read::<ParticipantsFile>("./data/participants.json");
-    let past_matching_rounds = read::<Vec<MatchingRound>>("./data/matches.json");
+    let participants_file = read::<ParticipantsFile>(&participants_file_path(data_path));
+    let past_matching_rounds = read::<Vec<MatchingRound>>(&matches_file_path(data_path));
 
     // Match participants
     let mut rng = ChaCha8Rng::from_entropy();
@@ -101,7 +112,7 @@ fn create_match(silent_messages: bool, silent_json: bool) {
 
     // Save matches to JSON file
     if !silent_json {
-        write_matches("./data/matches.json", matching_round);
+        write_matches(&matches_file_path(data_path), matching_round);
     }
 
     println!("Score of the matching round: {:#?}", score);
