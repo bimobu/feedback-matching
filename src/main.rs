@@ -28,10 +28,10 @@ enum Commands {
     CreateMatch {
         /// Not save the output to matches.json
         #[arg(short, long)]
-        json_silent: bool,
+        json_save: bool,
         /// Print the messages for each match
         #[arg(short, long)]
-        messages_silent: bool,
+        messages_generate: bool,
     },
     /// Print the messages for a past matching round
     PastMatchMessages {
@@ -48,9 +48,9 @@ fn main() {
             print_messages_for_past_round(matching_round_id, &data_path)
         }
         Commands::CreateMatch {
-            json_silent: silent_json,
-            messages_silent: silent_messages,
-        } => create_match(silent_messages, silent_json, &data_path),
+            json_save: save_json,
+            messages_generate: generate_messages,
+        } => create_match(generate_messages, save_json, &data_path),
     }
 }
 
@@ -95,7 +95,7 @@ fn print_messages_for_past_round(matching_round_id: Option<i32>, data_path: &Str
     }
 }
 
-fn create_match(silent_messages: bool, silent_json: bool, data_path: &String) {
+fn create_match(generate_messages: bool, save_json: bool, data_path: &String) {
     // Read JSON Data
     let participants_file = read::<ParticipantsFile>(&participants_file_path(data_path));
     let past_matching_rounds = read::<Vec<MatchingRound>>(&matches_file_path(data_path));
@@ -106,12 +106,12 @@ fn create_match(silent_messages: bool, silent_json: bool, data_path: &String) {
         match_participants(&participants_file, &past_matching_rounds, &mut rng);
 
     // Print messages
-    if !silent_messages {
+    if generate_messages {
         print_messages_for_round(&matching_round);
     }
 
     // Save matches to JSON file
-    if !silent_json {
+    if save_json {
         write_matches(&matches_file_path(data_path), matching_round);
     }
 
