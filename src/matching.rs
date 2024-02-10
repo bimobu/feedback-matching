@@ -14,6 +14,8 @@ struct ParticipantWithPriority {
     priority: i64,
 }
 
+const NUMBER_OF_TRIES: i32 = 5;
+
 pub fn match_participants(
     participants_file: &ParticipantsFile,
     past_matching_rounds: &Vec<MatchingRound>,
@@ -51,7 +53,7 @@ fn get_good_matches(
 
     let mut matches_with_scores = Vec::new();
 
-    for _ in 0..5 {
+    for _ in 0..NUMBER_OF_TRIES {
         let matches = get_matches(&unmatched_givers, &priority_map, rng);
 
         match matches {
