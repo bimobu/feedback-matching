@@ -19,19 +19,16 @@ fn read<T>(file_path: &str, schema_path: &str) -> T
 where
     T: DeserializeOwned,
 {
-    let data_string = read_string(file_path);
-    let schema_string = read_string(schema_path);
+    let compiled_schema = load_schema(schema_path);
 
-    let schema: Value =
-        serde_json::from_str(schema_string.as_str()).expect("Failed to parse JSON Schema");
+    let data_string = read_string(file_path);
     let json_data: Value =
         serde_json::from_str(data_string.as_str()).expect("Failed to parse JSON data");
 
-    let compiled_schema = JSONSchema::compile(&schema).expect("Failed to compile JSON Schema");
     let validation_result = compiled_schema.validate(&json_data);
 
     if let Err(errors) = validation_result {
-        println!("\n### JSON Validation Errors ###\n");
+        println!("\n### Read JSON Validation Errors ###\n");
 
         for (i, error) in errors.enumerate() {
             println!(
@@ -57,7 +54,13 @@ fn read_string(file_path: &str) -> String {
     contents
 }
 
-// TODO add JSON validation when writing
+fn load_schema(schema_path: &str) -> JSONSchema {
+    let schema_string = read_string(schema_path);
+    let schema: Value =
+        serde_json::from_str(schema_string.as_str()).expect("Failed to parse JSON Schema");
+    JSONSchema::compile(&schema).expect("Failed to compile JSON Schema")
+}
+
 pub fn write_matches(file_path: &str, round: MatchingRound) {
     let mut file = OpenOptions::new()
         .read(true)
@@ -68,10 +71,30 @@ pub fn write_matches(file_path: &str, round: MatchingRound) {
 
     let mut existing_rounds: Vec<MatchingRound> = from_reader(&file).unwrap_or_else(|_| Vec::new());
 
-    // Append a new MatchingRound to the "matches.json" array
     existing_rounds.push(round);
 
-    // Serialize and write the updated matches array to the matches JSON file
+    let schema = load_schema("./data/schema/matches_schema.json");
+
+    let value = serde_json::to_value(&existing_rounds).expect("Failed to serialize MatchingRound");
+    let validation_result = schema.validate(&value);
+
+    if let Err(errors) = validation_result {
+        println!("\n### Write JSON Validation Errors ###\n");
+
+        for (i, error) in errors.enumerate() {
+            println!(
+                "{}.Validation error: {}\nInstance path: {}\n",
+                i + 1,
+                error,
+                error.instance_path
+            );
+        }
+
+        print!("###\n\n");
+
+        return;
+    }
+
     file.seek(SeekFrom::Start(0))
         .expect("Failed to seek to the beginning of the file");
     serde_json::to_writer_pretty(&mut file, &existing_rounds)
