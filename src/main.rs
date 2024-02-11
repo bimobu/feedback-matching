@@ -4,13 +4,11 @@ mod messages;
 mod structs;
 
 use clap::{Parser, Subcommand};
-use file_io::{read, write_matches};
+use file_io::{read_matching_rounds, read_participants, write_matches};
 use matching::match_participants;
 use messages::print_messages_for_round;
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
-
-use crate::structs::{matching_round::MatchingRound, participants_file::ParticipantsFile};
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -63,7 +61,7 @@ fn participants_file_path(data_path: &String) -> String {
 }
 
 fn print_messages_for_past_round(matching_round_id: Option<i32>, data_path: &String) {
-    let past_matching_rounds = read::<Vec<MatchingRound>>(&matches_file_path(data_path));
+    let past_matching_rounds = read_matching_rounds(&matches_file_path(data_path));
 
     match matching_round_id {
         None => {
@@ -97,8 +95,8 @@ fn print_messages_for_past_round(matching_round_id: Option<i32>, data_path: &Str
 
 fn create_match(generate_messages: bool, save_json: bool, data_path: &String) {
     // Read JSON Data
-    let participants_file = read::<ParticipantsFile>(&participants_file_path(data_path));
-    let past_matching_rounds = read::<Vec<MatchingRound>>(&matches_file_path(data_path));
+    let participants_file = read_participants(&participants_file_path(data_path));
+    let past_matching_rounds = read_matching_rounds(&matches_file_path(data_path));
 
     // Match participants
     let mut rng = ChaCha8Rng::from_entropy();

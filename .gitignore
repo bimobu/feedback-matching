@@ -1,3 +1,4 @@
 .DS_Store
 /target
-/data/*
+/data/matches.json
+/data/participants.json
