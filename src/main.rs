@@ -100,7 +100,7 @@ fn create_match(generate_messages: bool, save_json: bool, data_path: &String) {
 
     // Match participants
     let mut rng = ChaCha8Rng::from_entropy();
-    let (matching_round, score) =
+    let (matching_round, scores_by_group) =
         match_participants(&participants_file, &past_matching_rounds, &mut rng);
 
     // Print messages
@@ -113,5 +113,7 @@ fn create_match(generate_messages: bool, save_json: bool, data_path: &String) {
         write_matches(&matches_file_path(data_path), matching_round);
     }
 
-    println!("Score of the matching round: {:#?}", score);
+    for (group_id, score) in scores_by_group {
+        println!("Group {} has a score of {}", group_id, score);
+    }
 }

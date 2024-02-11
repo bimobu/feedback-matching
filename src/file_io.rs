@@ -57,6 +57,7 @@ fn read_string(file_path: &str) -> String {
     contents
 }
 
+// TODO add JSON validation when writing
 pub fn write_matches(file_path: &str, round: MatchingRound) {
     let mut file = OpenOptions::new()
         .read(true)
