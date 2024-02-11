@@ -6,13 +6,7 @@ use crate::structs::r#match::Match;
 use rand::seq::SliceRandom;
 use rand::Rng;
 use std::collections::HashMap;
-use std::collections::HashSet;
 use time::OffsetDateTime;
-
-struct ParticipantWithPriority {
-    participant: Participant,
-    priority: i64,
-}
 
 const NUMBER_OF_TRIES: i32 = 5;
 
@@ -25,8 +19,8 @@ pub fn match_participants(
     let unmatched_receivers = participants_file.participants.clone();
 
     let (matches, score) = get_good_matches(
-        &unmatched_givers,
-        &unmatched_receivers,
+        unmatched_givers,
+        unmatched_receivers,
         &past_matching_rounds,
         rng,
     );
@@ -42,19 +36,27 @@ pub fn match_participants(
 }
 
 fn get_good_matches(
-    unmatched_givers: &Vec<Participant>,
-    unmatched_receivers: &Vec<Participant>,
+    unmatched_givers: Vec<Participant>,
+    unmatched_receivers: Vec<Participant>,
     past_matching_rounds: &Vec<MatchingRound>,
     rng: &mut impl Rng,
 ) -> (Vec<Match>, i64) {
     let last_match_map = get_last_match_map(past_matching_rounds);
-    let priority_map =
-        get_priority_map(&last_match_map, unmatched_givers, unmatched_receivers, rng);
 
     let mut matches_with_scores = Vec::new();
 
     for _ in 0..NUMBER_OF_TRIES {
-        let matches = get_matches(&unmatched_givers, &priority_map, rng);
+        let mut cloned_unmatched_givers = unmatched_givers.clone();
+        let mut cloned_unmatched_receivers = unmatched_receivers.clone();
+
+        cloned_unmatched_givers.shuffle(rng);
+        cloned_unmatched_receivers.shuffle(rng);
+
+        let matches = get_matches(
+            &last_match_map,
+            cloned_unmatched_givers,
+            cloned_unmatched_receivers,
+        );
 
         match matches {
             Some(matches) => {
@@ -101,99 +103,47 @@ fn get_days_since_matching_round(matching_round: &MatchingRound) -> i64 {
     return time_since_last_match.whole_days();
 }
 
-fn get_priority_map(
-    last_match_map: &HashMap<(u32, u32), i64>,
-    unmatched_givers: &Vec<Participant>,
-    unmatched_receivers: &Vec<Participant>,
-    rng: &mut impl Rng,
-) -> HashMap<u32, Vec<Participant>> {
-    let mut priority_map: HashMap<u32, Vec<Participant>> = HashMap::new();
-    let mut cloned_unmatched_receivers = unmatched_receivers.clone();
-    cloned_unmatched_receivers.shuffle(rng);
-
-    for giver in unmatched_givers {
-        let mut participants_with_priorities: Vec<ParticipantWithPriority> = Vec::new();
-
-        for receiver in &cloned_unmatched_receivers {
-            if giver.id == receiver.id {
-                continue;
-            }
-
-            participants_with_priorities.push(ParticipantWithPriority {
-                participant: receiver.clone(),
-                priority: get_days_since_last_match(&last_match_map, giver.id, receiver.id),
-            });
-        }
-
-        participants_with_priorities.sort_by(|a, b| b.priority.cmp(&a.priority));
-
-        let recievers_sorted_by_priority: Vec<Participant> = participants_with_priorities
-            .iter()
-            .map(|p| p.participant.clone())
-            .collect();
-
-        priority_map.insert(giver.id, recievers_sorted_by_priority);
-    }
-
-    return priority_map;
-}
-
 fn get_matches(
-    unmatched_givers: &Vec<Participant>,
-    priority_map: &HashMap<u32, Vec<Participant>>,
-    rng: &mut impl Rng,
+    last_match_map: &HashMap<(u32, u32), i64>,
+    mut unmatched_givers: Vec<Participant>,
+    mut unmatched_receivers: Vec<Participant>,
 ) -> Option<Vec<Match>> {
     let mut matches: Vec<Match> = Vec::new();
 
-    let mut cloned_unmatched_givers = unmatched_givers.clone();
-    let mut matched_receiver_ids = HashSet::<u32>::new();
-
-    cloned_unmatched_givers.shuffle(rng);
-
-    while !cloned_unmatched_givers.is_empty() {
-        let giver = &cloned_unmatched_givers[0];
+    while !unmatched_givers.is_empty() {
+        let giver = &unmatched_givers[0];
         let giver_id = giver.id;
 
-        let giver_priority_map = priority_map.get(&giver_id);
+        let mut best_receiver_score = i64::MIN;
+        let mut best_receiver_index = usize::MAX;
 
-        if giver_priority_map.is_none() {
-            panic!("No priority map for giver {giver_id}");
+        for (i, receiver) in unmatched_receivers.iter().enumerate() {
+            if giver_id == receiver.id {
+                continue;
+            }
+
+            let score = get_days_since_last_match(last_match_map, giver_id, receiver.id);
+
+            if best_receiver_score < score {
+                best_receiver_score = score;
+                best_receiver_index = i;
+            }
         }
 
-        let recievers_sorted_by_priority = giver_priority_map.unwrap();
-
-        let receiver_option =
-            get_optimal_receiver(&matched_receiver_ids, recievers_sorted_by_priority);
-
-        match receiver_option {
-            Some(receiver) => {
+        match best_receiver_index < usize::MAX {
+            true => {
                 matches.push(create_match(
-                    cloned_unmatched_givers.remove(0),
-                    receiver.clone(),
+                    unmatched_givers.remove(0),
+                    unmatched_receivers.remove(best_receiver_index),
                 ));
-
-                matched_receiver_ids.insert(receiver.id);
             }
-            None => {
+            false => {
                 return None;
             }
         }
     }
 
     return Some(matches);
-}
-
-fn get_optimal_receiver<'a>(
-    matched_receiver_ids: &'a HashSet<u32>,
-    recievers_sorted_by_priority: &'a Vec<Participant>,
-) -> Option<&'a Participant> {
-    for receiver in recievers_sorted_by_priority {
-        if !matched_receiver_ids.contains(&receiver.id) {
-            return Some(receiver);
-        }
-    }
-
-    None
 }
 
 fn create_match(giver: Participant, receiver: Participant) -> Match {
