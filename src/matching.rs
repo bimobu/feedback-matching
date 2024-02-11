@@ -14,16 +14,19 @@ pub fn match_participants(
     participants_file: &ParticipantsFile,
     past_matching_rounds: &Vec<MatchingRound>,
     rng: &mut impl Rng,
-) -> (MatchingRound, i64) {
-    let unmatched_givers = participants_file.participants.clone();
-    let unmatched_receivers = participants_file.participants.clone();
+) -> (MatchingRound, Vec<(i32, i64)>) {
+    let mut scores_by_group: Vec<(i32, i64)> = Vec::new();
+    let mut matches: Vec<Match> = Vec::new();
 
-    let (matches, score) = get_good_matches(
-        unmatched_givers,
-        unmatched_receivers,
-        &past_matching_rounds,
-        rng,
-    );
+    for group in &participants_file.groups {
+        let (matches_for_group, score_for_group) =
+            get_good_matches(&group.participants, &past_matching_rounds, rng);
+
+        let mut mut_matches = matches_for_group.clone(); // TODO: remove clone
+        matches.append(&mut mut_matches);
+
+        scores_by_group.push((group.id, score_for_group));
+    }
 
     let next_matching_round_id = get_next_matching_round_id(past_matching_rounds);
     let matching_round = MatchingRound {
@@ -32,12 +35,11 @@ pub fn match_participants(
         matches,
     };
 
-    (matching_round, score)
+    (matching_round, scores_by_group)
 }
 
 fn get_good_matches(
-    unmatched_givers: Vec<Participant>,
-    unmatched_receivers: Vec<Participant>,
+    participants: &Vec<Participant>,
     past_matching_rounds: &Vec<MatchingRound>,
     rng: &mut impl Rng,
 ) -> (Vec<Match>, i64) {
@@ -46,8 +48,8 @@ fn get_good_matches(
     let mut matches_with_scores = Vec::new();
 
     for _ in 0..NUMBER_OF_TRIES {
-        let mut cloned_unmatched_givers = unmatched_givers.clone();
-        let mut cloned_unmatched_receivers = unmatched_receivers.clone();
+        let mut cloned_unmatched_givers = participants.clone();
+        let mut cloned_unmatched_receivers = participants.clone();
 
         cloned_unmatched_givers.shuffle(rng);
         cloned_unmatched_receivers.shuffle(rng);
@@ -77,7 +79,7 @@ fn get_good_matches(
         .max_by(|ms1, ms2| ms1.1.cmp(&ms2.1))
         .unwrap();
 
-    good_matches_and_score.clone()
+    good_matches_and_score.clone() // TODO: remove clone
 }
 
 fn get_last_match_map(past_matching_rounds: &Vec<MatchingRound>) -> HashMap<(u32, u32), i64> {
@@ -159,7 +161,7 @@ fn get_optimal_receiver_index(
 
 fn create_match(giver: Participant, receiver: Participant) -> Match {
     return Match {
-        giver: giver.clone(),
+        giver: giver.clone(), // TODO clone necessary here?
         receiver: receiver.clone(),
     };
 }
@@ -202,9 +204,12 @@ fn get_next_matching_round_id(past_matching_rounds: &Vec<MatchingRound>) -> i32 
     };
 }
 
+// TODO fix tests
 #[cfg(test)]
 mod tests {
-    use crate::structs::participant::Gender;
+    use std::vec;
+
+    use crate::structs::{participant::Gender, participants_file::ParticipantsGroup};
 
     use super::*;
     use pretty_assertions::assert_eq;
@@ -221,26 +226,29 @@ mod tests {
     fn test_match_participants() {
         // Arrange
         let participants_data = ParticipantsFile {
-            participants: vec![
-                Participant {
-                    id: 1,
-                    first_name: "John".to_string(),
-                    last_name: "Doe".to_string(),
-                    gender: Gender::Male,
-                },
-                Participant {
-                    id: 2,
-                    first_name: "Jane".to_string(),
-                    last_name: "Smith".to_string(),
-                    gender: Gender::Female,
-                },
-                Participant {
-                    id: 3,
-                    first_name: "Bob".to_string(),
-                    last_name: "Johnson".to_string(),
-                    gender: Gender::Male,
-                },
-            ],
+            groups: vec![ParticipantsGroup {
+                id: 1,
+                participants: vec![
+                    Participant {
+                        id: 1,
+                        first_name: "John".to_string(),
+                        last_name: "Doe".to_string(),
+                        gender: Gender::Male,
+                    },
+                    Participant {
+                        id: 2,
+                        first_name: "Jane".to_string(),
+                        last_name: "Smith".to_string(),
+                        gender: Gender::Female,
+                    },
+                    Participant {
+                        id: 3,
+                        first_name: "Bob".to_string(),
+                        last_name: "Johnson".to_string(),
+                        gender: Gender::Male,
+                    },
+                ],
+            }],
         };
         let past_matching_rounds: Vec<MatchingRound> = vec![MatchingRound {
             id: 1,
@@ -299,7 +307,7 @@ mod tests {
         // Assert
         assert_eq!(
             matching_round.matches.len(),
-            participants_data.participants.len()
+            participants_data.groups[0].participants.len()
         );
 
         for matched_pair in matching_round.matches.iter() {
@@ -311,7 +319,10 @@ mod tests {
     fn test_match_participants_empty() {
         // Arrange
         let participants_data = ParticipantsFile {
-            participants: vec![],
+            groups: vec![ParticipantsGroup {
+                id: 1,
+                participants: vec![],
+            }],
         };
         let past_matching_rounds = vec![];
         let mut rng = get_seeded_rng();
@@ -328,11 +339,14 @@ mod tests {
     fn test_match_participants_single_participant() {
         // Arrange
         let participants_data = ParticipantsFile {
-            participants: vec![Participant {
+            groups: vec![ParticipantsGroup {
                 id: 1,
-                first_name: "John".to_string(),
-                last_name: "Doe".to_string(),
-                gender: crate::structs::participant::Gender::Male,
+                participants: vec![Participant {
+                    id: 1,
+                    first_name: "John".to_string(),
+                    last_name: "Doe".to_string(),
+                    gender: crate::structs::participant::Gender::Male,
+                }],
             }],
         };
         let past_matching_rounds = vec![];
