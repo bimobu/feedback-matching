@@ -114,36 +114,47 @@ fn get_matches(
         let giver = &unmatched_givers[0];
         let giver_id = giver.id;
 
-        let mut best_receiver_score = i64::MIN;
-        let mut best_receiver_index = usize::MAX;
+        let best_receiver_index_option =
+            get_optimal_receiver_index(last_match_map, giver_id, &unmatched_receivers);
 
-        for (i, receiver) in unmatched_receivers.iter().enumerate() {
-            if giver_id == receiver.id {
-                continue;
-            }
-
-            let score = get_days_since_last_match(last_match_map, giver_id, receiver.id);
-
-            if best_receiver_score < score {
-                best_receiver_score = score;
-                best_receiver_index = i;
-            }
-        }
-
-        match best_receiver_index < usize::MAX {
-            true => {
+        match best_receiver_index_option {
+            Some(best_receiver_index) => {
                 matches.push(create_match(
                     unmatched_givers.remove(0),
                     unmatched_receivers.remove(best_receiver_index),
                 ));
             }
-            false => {
+            None => {
                 return None;
             }
         }
     }
 
     return Some(matches);
+}
+
+fn get_optimal_receiver_index(
+    last_match_map: &HashMap<(u32, u32), i64>,
+    giver_id: u32,
+    unmatched_receivers: &Vec<Participant>,
+) -> Option<usize> {
+    let mut best_receiver_score = i64::MIN;
+    let mut best_receiver_index = None;
+
+    for (i, receiver) in unmatched_receivers.iter().enumerate() {
+        if giver_id == receiver.id {
+            continue;
+        }
+
+        let score = get_days_since_last_match(last_match_map, giver_id, receiver.id);
+
+        if best_receiver_score < score {
+            best_receiver_score = score;
+            best_receiver_index = Some(i);
+        }
+    }
+
+    best_receiver_index
 }
 
 fn create_match(giver: Participant, receiver: Participant) -> Match {
