@@ -1,0 +1,68 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "integer"
+      },
+      "date": {
+        "type": "string",
+        "format": "date"
+      },
+      "matches": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "giver": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "integer"
+                },
+                "first_name": {
+                  "type": "string"
+                },
+                "last_name": {
+                  "type": "string"
+                },
+                "gender": {
+                  "type": "string",
+                  "enum": ["Male", "Female", "Other"]
+                }
+              },
+              "required": ["id", "first_name", "last_name", "gender"],
+              "additionalProperties": false
+            },
+            "receiver": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "integer"
+                },
+                "first_name": {
+                  "type": "string"
+                },
+                "last_name": {
+                  "type": "string"
+                },
+                "gender": {
+                  "type": "string",
+                  "enum": ["Male", "Female", "Other"]
+                }
+              },
+              "required": ["id", "first_name", "last_name", "gender"],
+              "additionalProperties": false
+            }
+          },
+          "required": ["giver", "receiver"],
+          "additionalProperties": false
+        }
+      }
+    },
+    "required": ["id", "date", "matches"],
+    "additionalProperties": false
+  }
+}
