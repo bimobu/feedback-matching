@@ -122,8 +122,8 @@ fn get_matches(
         match best_receiver_index_option {
             Some(best_receiver_index) => {
                 matches.push(create_match(
-                    unmatched_givers.remove(0),
-                    unmatched_receivers.remove(best_receiver_index),
+                    unmatched_givers.swap_remove(0),
+                    unmatched_receivers.swap_remove(best_receiver_index),
                 ));
             }
             None => {
@@ -160,10 +160,7 @@ fn get_optimal_receiver_index(
 }
 
 fn create_match(giver: Participant, receiver: Participant) -> Match {
-    return Match {
-        giver: giver.clone(), // TODO clone necessary here?
-        receiver: receiver.clone(),
-    };
+    return Match { giver, receiver };
 }
 
 fn score_matches(last_match_map: &HashMap<(u32, u32), i64>, matches: &Vec<Match>) -> i64 {
