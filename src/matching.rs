@@ -19,13 +19,19 @@ pub fn match_participants(
     let mut matches: Vec<Match> = Vec::new();
 
     for group in &participants_file.groups {
-        let (matches_for_group, score_for_group) =
-            get_good_matches(&group.participants, &past_matching_rounds, rng);
+        let matches_and_score = get_good_matches(&group.participants, &past_matching_rounds, rng);
 
-        let mut mut_matches = matches_for_group.clone(); // TODO: remove clone
-        matches.append(&mut mut_matches);
+        match matches_and_score {
+            Some((matches_for_group, score_for_group)) => {
+                let mut mut_matches = matches_for_group;
+                matches.append(&mut mut_matches);
 
-        scores_by_group.push((group.id, score_for_group));
+                scores_by_group.push((group.id, score_for_group));
+            }
+            None => {
+                panic!("Failed to match participants for group {}", group.id);
+            }
+        }
     }
 
     let next_matching_round_id = get_next_matching_round_id(past_matching_rounds);
@@ -42,10 +48,11 @@ fn get_good_matches(
     participants: &Vec<Participant>,
     past_matching_rounds: &Vec<MatchingRound>,
     rng: &mut impl Rng,
-) -> (Vec<Match>, i64) {
+) -> Option<(Vec<Match>, i64)> {
     let last_match_map = get_last_match_map(past_matching_rounds);
 
-    let mut matches_with_scores = Vec::new();
+    let mut best_score = i64::MIN;
+    let mut best_match_and_score = None;
 
     for _ in 0..NUMBER_OF_TRIES {
         let mut cloned_unmatched_givers = participants.clone();
@@ -65,21 +72,19 @@ fn get_good_matches(
                 let score = score_matches(&last_match_map, &matches);
 
                 if score == i64::MAX {
-                    return (matches, score);
+                    return Some((matches, score));
                 }
 
-                matches_with_scores.push((matches, score));
+                if score > best_score {
+                    best_score = score;
+                    best_match_and_score = Some((matches, score));
+                }
             }
             None => continue,
         }
     }
 
-    let good_matches_and_score = matches_with_scores
-        .iter()
-        .max_by(|ms1, ms2| ms1.1.cmp(&ms2.1))
-        .unwrap();
-
-    good_matches_and_score.clone() // TODO: remove clone
+    best_match_and_score
 }
 
 fn get_last_match_map(past_matching_rounds: &Vec<MatchingRound>) -> HashMap<(u32, u32), i64> {
