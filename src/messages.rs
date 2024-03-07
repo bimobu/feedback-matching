@@ -25,6 +25,9 @@ Das Feedback sollte im Idealfall so Sachen wie das Verhalten in und außerhalb v
 Mache am Ende der zwei Wochen bitte selber einen Termin mit {ihm_ihr} aus um {ihm_ihr} das Feedback zu geben. \
 Es gibt Donnerstags einen Blocker-Termin, den ihr dafür nutzen könnt. \
 \n
+Wenn dir aber schon vorher etwas auffällt, was du mitteilen möchtest, kannst du das gerne auch schon vorher tun! \
+Es ist auch nicht schlimm wenn dir mal nichts einfällt was du sagen kannst. Dann kannst du {ihn_sie} auch einfach fragen, ob es für {ihn_sie} ok ist, wenn ihr es ausfallen lasst. \
+\n
 Viel Spaß 😊
 ---"
       );
