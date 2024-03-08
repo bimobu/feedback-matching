@@ -5,6 +5,7 @@ use serde::Deserialize;
 pub struct ParticipantsGroup {
     pub id: i32,
     pub participants: Vec<Participant>,
+    pub excluded_participants: Vec<Participant>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
