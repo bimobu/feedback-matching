@@ -8,8 +8,8 @@ use rand::Rng;
 use std::collections::HashMap;
 use time::OffsetDateTime;
 
-const NUMBER_OF_TRIES: i32 = 5;
-const MAX_SCORE: i64 = i64::MAX;
+const NUMBER_OF_TRIES: i32 = 50;
+const MAX_SCORE: i64 = 1000000;
 
 // struct MatchingParticipant {
 //     // id, first_name, last_name, gender, swapped_from
@@ -290,11 +290,14 @@ fn score_matches(last_match_map: &HashMap<(u32, u32), i64>, matches: &Vec<Match>
         .map(|m| get_days_since_last_match(last_match_map, m.giver.id, m.receiver.id))
         .collect();
 
-    let min_days_since_last_match = days_since_last_matches.iter().min();
+    let sum: i64 = days_since_last_matches.iter().sum();
 
-    match min_days_since_last_match {
-        Some(min_days_since_last_match) => *min_days_since_last_match,
-        None => 0,
+    let number_of_matches = matches.len() as i64;
+
+    if number_of_matches == 0 {
+        0
+    } else {
+        sum / number_of_matches
     }
 }
 
