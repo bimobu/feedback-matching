@@ -5,7 +5,7 @@ mod structs;
 
 use clap::{Parser, Subcommand};
 use file_io::{read_matching_rounds, read_participants, write_matches};
-use matching::match_participants;
+use matching::{get_complete_givers, match_participants};
 use messages::print_messages_for_round;
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
@@ -22,6 +22,13 @@ struct Args {
 
 #[derive(Subcommand, Debug)]
 enum Commands {
+    /// Print the messages for a past matching round
+    PastMatchMessages {
+        /// The matching round id to print messages for
+        matching_round_id: Option<i32>,
+    },
+    /// Print the complete givers for every group
+    CompleteGivers {},
     /// Create a new match
     CreateMatch {
         /// Not save the output to matches.json
@@ -30,11 +37,6 @@ enum Commands {
         /// Print the messages for each match
         #[arg(short, long)]
         messages_generate: bool,
-    },
-    /// Print the messages for a past matching round
-    PastMatchMessages {
-        /// The matching round id to print messages for
-        matching_round_id: Option<i32>,
     },
 }
 
@@ -45,6 +47,7 @@ fn main() {
         Commands::PastMatchMessages { matching_round_id } => {
             print_messages_for_past_round(matching_round_id, &data_path)
         }
+        Commands::CompleteGivers {} => print_complete_givers(&data_path),
         Commands::CreateMatch {
             json_save: save_json,
             messages_generate: generate_messages,
@@ -91,6 +94,15 @@ fn print_messages_for_past_round(matching_round_id: Option<i32>, data_path: &Str
             };
         }
     }
+}
+
+fn print_complete_givers(data_path: &String) {
+    let participants_file = read_participants(&participants_file_path(data_path));
+    let past_matching_rounds = read_matching_rounds(&matches_file_path(data_path));
+
+    let complete_givers = get_complete_givers(&participants_file, &past_matching_rounds);
+
+    println!("{:#?}", complete_givers);
 }
 
 fn create_match(generate_messages: bool, save_json: bool, data_path: &String) {
