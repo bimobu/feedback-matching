@@ -32,6 +32,29 @@
               "required": ["id", "first_name", "last_name", "gender"],
               "additionalProperties": false
             }
+          },
+          "excluded_participants": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "integer"
+                },
+                "first_name": {
+                  "type": "string"
+                },
+                "last_name": {
+                  "type": "string"
+                },
+                "gender": {
+                  "type": "string",
+                  "enum": ["Male", "Female", "Other"]
+                }
+              },
+              "required": ["id", "first_name", "last_name", "gender"],
+              "additionalProperties": false
+            }
           }
         },
         "required": ["id", "participants"],

@@ -370,6 +370,7 @@ mod tests {
                         gender: Gender::Male,
                     },
                 ],
+                excluded_participants: vec![],
             }],
         };
         let past_matching_rounds: Vec<MatchingRound> = vec![MatchingRound {
@@ -444,6 +445,7 @@ mod tests {
             groups: vec![ParticipantsGroup {
                 id: 1,
                 participants: vec![],
+                excluded_participants: vec![],
             }],
         };
         let past_matching_rounds = vec![];
@@ -469,6 +471,7 @@ mod tests {
                     last_name: "Doe".to_string(),
                     gender: crate::structs::participant::Gender::Male,
                 }],
+                excluded_participants: vec![],
             }],
         };
         let past_matching_rounds = vec![];
