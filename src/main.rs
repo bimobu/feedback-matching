@@ -26,6 +26,9 @@ enum Commands {
     PastMatchMessages {
         /// The matching round id to print messages for
         matching_round_id: Option<i32>,
+        /// The number of weeks to separate the matches
+        #[arg(short, long, default_value_t = 4)]
+        intervall_weeks: i32,
     },
     /// Print the complete givers for every group
     CompleteGivers {},
@@ -37,6 +40,9 @@ enum Commands {
         /// Print the messages for each match
         #[arg(short, long)]
         messages_generate: bool,
+        /// The number of weeks to separate the matches (only really relevant for the messages)
+        #[arg(short, long, default_value_t = 4)]
+        intervall_weeks: i32,
     },
 }
 
@@ -44,14 +50,16 @@ fn main() {
     let Args { command, data_path } = Args::parse();
 
     match command {
-        Commands::PastMatchMessages { matching_round_id } => {
-            print_messages_for_past_round(matching_round_id, &data_path)
-        }
+        Commands::PastMatchMessages {
+            matching_round_id,
+            intervall_weeks,
+        } => print_messages_for_past_round(matching_round_id, intervall_weeks, &data_path),
         Commands::CompleteGivers {} => print_complete_givers(&data_path),
         Commands::CreateMatch {
             json_save: save_json,
             messages_generate: generate_messages,
-        } => create_match(generate_messages, save_json, &data_path),
+            intervall_weeks,
+        } => create_match(generate_messages, save_json, intervall_weeks, &data_path),
     }
 }
 
@@ -63,7 +71,11 @@ fn participants_file_path(data_path: &String) -> String {
     format!("{}/participants.json", data_path)
 }
 
-fn print_messages_for_past_round(matching_round_id: Option<i32>, data_path: &String) {
+fn print_messages_for_past_round(
+    matching_round_id: Option<i32>,
+    intervall_weeks: i32,
+    data_path: &String,
+) {
     let past_matching_rounds = read_matching_rounds(&matches_file_path(data_path));
 
     match matching_round_id {
@@ -72,7 +84,7 @@ fn print_messages_for_past_round(matching_round_id: Option<i32>, data_path: &Str
 
             match last_matching_round {
                 Some(matching_round) => {
-                    print_messages_for_round(matching_round);
+                    print_messages_for_round(matching_round, intervall_weeks);
                 }
                 None => {
                     println!("No matches have been created yet.");
@@ -86,7 +98,7 @@ fn print_messages_for_past_round(matching_round_id: Option<i32>, data_path: &Str
 
             match matching_round {
                 Some(matching_round) => {
-                    print_messages_for_round(matching_round);
+                    print_messages_for_round(matching_round, intervall_weeks);
                 }
                 None => {
                     println!("No matching round with id {matching_round_id} has been found");
@@ -105,7 +117,12 @@ fn print_complete_givers(data_path: &String) {
     println!("{:#?}", complete_givers);
 }
 
-fn create_match(generate_messages: bool, save_json: bool, data_path: &String) {
+fn create_match(
+    generate_messages: bool,
+    save_json: bool,
+    intervall_weeks: i32,
+    data_path: &String,
+) {
     // Read JSON Data
     let participants_file = read_participants(&participants_file_path(data_path));
     let past_matching_rounds = read_matching_rounds(&matches_file_path(data_path));
@@ -117,7 +134,7 @@ fn create_match(generate_messages: bool, save_json: bool, data_path: &String) {
 
     // Print messages
     if generate_messages {
-        print_messages_for_round(&matching_round);
+        print_messages_for_round(&matching_round, intervall_weeks);
     }
 
     // Save matches to JSON file
