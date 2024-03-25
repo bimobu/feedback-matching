@@ -27,7 +27,7 @@ pub fn print_messages_for_round(matching_round: &MatchingRound, intervall_weeks:
 \n
 Deine Aufgabe ist es, die nächsten {number_of_weeks} Wochen etwas auf {ihn_sie} zu achten und {ihm_ihr} am Ende dieser {number_of_weeks} Wochen (z.B. am {feedback_date_string}) Feedback zu geben. \
 Das Feedback sollte im Idealfall so Sachen wie das Verhalten in und außerhalb von Meetings, Verhalten im Team, Code, Eigeninitiative etc. enthalten. \
-Mache am Ende der {number_of_weeks} Wochen bitte selber einen Termin mit {ihm_ihr} aus um {ihm_ihr} das Feedback zu geben. \
+Mache bitte selber einen Termin mit {ihm_ihr} aus um {ihm_ihr} das Feedback zu geben. \
 Es gibt Donnerstags einen Blocker-Termin, den ihr dafür nutzen könnt. \
 \n
 Wenn dir aber schon vorher etwas auffällt, was du mitteilen möchtest, kannst du das gerne auch schon vorher tun! \
