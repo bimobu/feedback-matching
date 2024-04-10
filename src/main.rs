@@ -9,6 +9,7 @@ use matching::{get_complete_givers, match_participants};
 use messages::print_messages_for_round;
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
+use structs::matching_round::MatchingRound;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -134,15 +135,30 @@ fn create_match(
 
     // Print messages
     if generate_messages {
+        println!("\n### Messages: ###");
         print_messages_for_round(&matching_round, intervall_weeks);
     }
+
+    print_result(&matching_round, &scores_by_group);
 
     // Save matches to JSON file
     if save_json {
         write_matches(&matches_file_path(data_path), matching_round);
     }
+}
+
+fn print_result(matching_round: &MatchingRound, scores_by_group: &Vec<(i32, i64)>) {
+    println!("\n### Result: ###\n");
+
+    for group_match in &matching_round.matches {
+        let giver = group_match.giver.full_name();
+        let receiver = group_match.receiver.full_name();
+        println!("{giver} => {receiver}");
+    }
+
+    println!();
 
     for (group_id, score) in scores_by_group {
-        println!("Group {} has a score of {}", group_id, score);
+        println!("Group {group_id} has a score of {score}");
     }
 }
