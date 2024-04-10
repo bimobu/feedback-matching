@@ -4,8 +4,10 @@ mod messages;
 mod structs;
 
 use clap::{Parser, Subcommand};
-use file_io::{read_matching_rounds, read_participants, write_matches};
-use matching::{get_complete_givers, match_participants};
+use file_io::{
+    read_matching_rounds, read_participants, save_matching_round, update_all_existing_rounds,
+};
+use matching::{calculate_scores, get_complete_givers, match_participants};
 use messages::print_messages_for_round;
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
@@ -45,6 +47,8 @@ enum Commands {
         #[arg(short, long, default_value_t = 4)]
         intervall_weeks: i32,
     },
+    /// Execute data migrations
+    CalculateAndSaveScores {},
 }
 
 fn main() {
@@ -61,6 +65,7 @@ fn main() {
             messages_generate: generate_messages,
             intervall_weeks,
         } => create_match(generate_messages, save_json, intervall_weeks, &data_path),
+        Commands::CalculateAndSaveScores {} => calculate_and_save_scores(&data_path),
     }
 }
 
@@ -143,7 +148,7 @@ fn create_match(
 
     // Save matches to JSON file
     if save_json {
-        write_matches(&matches_file_path(data_path), matching_round);
+        save_matching_round(&matches_file_path(data_path), matching_round);
     }
 }
 
@@ -153,7 +158,8 @@ fn print_result(matching_round: &MatchingRound, scores_by_group: &Vec<(i32, i64)
     for group_match in &matching_round.matches {
         let giver = group_match.giver.full_name();
         let receiver = group_match.receiver.full_name();
-        println!("{giver} => {receiver}");
+        let score = group_match.score;
+        println!("{giver} => {receiver}, score: {score}");
     }
 
     println!();
@@ -161,4 +167,10 @@ fn print_result(matching_round: &MatchingRound, scores_by_group: &Vec<(i32, i64)
     for (group_id, score) in scores_by_group {
         println!("Group {group_id} has a score of {score}");
     }
+}
+
+fn calculate_and_save_scores(data_path: &String) {
+    let past_matching_rounds = read_matching_rounds(&matches_file_path(data_path));
+    let new_matching_rounds = calculate_scores(&past_matching_rounds);
+    update_all_existing_rounds(&matches_file_path(data_path), &new_matching_rounds);
 }

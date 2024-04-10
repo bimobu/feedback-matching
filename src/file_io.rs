@@ -61,8 +61,8 @@ fn load_schema(schema_path: &str) -> JSONSchema {
     JSONSchema::compile(&schema).expect("Failed to compile JSON Schema")
 }
 
-pub fn write_matches(file_path: &str, round: MatchingRound) {
-    let mut file = OpenOptions::new()
+pub fn save_matching_round(file_path: &str, round: MatchingRound) {
+    let file = OpenOptions::new()
         .read(true)
         .write(true)
         .create(true)
@@ -73,6 +73,10 @@ pub fn write_matches(file_path: &str, round: MatchingRound) {
 
     existing_rounds.push(round);
 
+    update_all_existing_rounds(file_path, &existing_rounds)
+}
+
+pub fn update_all_existing_rounds(file_path: &str, existing_rounds: &Vec<MatchingRound>) {
     let schema = load_schema("./data/schema/matches_schema.json");
 
     let value = serde_json::to_value(&existing_rounds).expect("Failed to serialize MatchingRound");
@@ -94,6 +98,13 @@ pub fn write_matches(file_path: &str, round: MatchingRound) {
 
         return;
     }
+
+    let mut file = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .open(file_path)
+        .expect("Failed to open matches file");
 
     file.seek(SeekFrom::Start(0))
         .expect("Failed to seek to the beginning of the file");

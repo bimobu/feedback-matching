@@ -55,9 +55,10 @@
               },
               "required": ["id", "first_name", "last_name", "gender"],
               "additionalProperties": false
-            }
+            },
+            "score": { "type": "integer" }
           },
-          "required": ["giver", "receiver"],
+          "required": ["giver", "receiver", "score"],
           "additionalProperties": false
         }
       }
