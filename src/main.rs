@@ -118,9 +118,22 @@ fn print_complete_givers(data_path: &String) {
     let participants_file = read_participants(&participants_file_path(data_path));
     let past_matching_rounds = read_matching_rounds(&matches_file_path(data_path));
 
-    let complete_givers = get_complete_givers(&participants_file, &past_matching_rounds);
+    let complete_givers_by_group = get_complete_givers(&participants_file, &past_matching_rounds);
 
-    println!("{:#?}", complete_givers);
+    for group_id in complete_givers_by_group.keys() {
+        let complete_givers = complete_givers_by_group
+            .get(group_id)
+            .expect("Complete givers not found");
+        let complete_giver_names: Vec<String> =
+            complete_givers.iter().map(|g| g.full_name()).collect();
+
+        println!(
+            "Complete givers for group {group_id} {:#?}",
+            complete_giver_names
+        );
+    }
+
+    // println!("{:#?}", complete_givers_by_group);
 }
 
 fn create_match(
