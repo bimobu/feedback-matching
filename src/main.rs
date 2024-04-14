@@ -46,6 +46,9 @@ enum Commands {
         /// The number of weeks to separate the matches (only really relevant for the messages)
         #[arg(short, long, default_value_t = 4)]
         intervall_weeks: i32,
+        /// Match cross-teams
+        #[arg(short, long)]
+        cross_team_round: bool,
     },
     /// Execute data migrations
     CalculateAndSaveScores {},
@@ -64,7 +67,14 @@ fn main() {
             json_save: save_json,
             messages_generate: generate_messages,
             intervall_weeks,
-        } => create_match(generate_messages, save_json, intervall_weeks, &data_path),
+            cross_team_round,
+        } => create_match(
+            generate_messages,
+            save_json,
+            intervall_weeks,
+            cross_team_round,
+            &data_path,
+        ),
         Commands::CalculateAndSaveScores {} => calculate_and_save_scores(&data_path),
     }
 }
@@ -140,6 +150,7 @@ fn create_match(
     generate_messages: bool,
     save_json: bool,
     intervall_weeks: i32,
+    cross_team_round: bool,
     data_path: &String,
 ) {
     // Read JSON Data
@@ -148,8 +159,12 @@ fn create_match(
 
     // Match participants
     let mut rng = ChaCha8Rng::from_entropy();
-    let (matching_round, scores_by_group) =
-        match_participants(&participants_file, &past_matching_rounds, &mut rng);
+    let (matching_round, scores_by_group) = match_participants(
+        &participants_file,
+        &past_matching_rounds,
+        cross_team_round,
+        &mut rng,
+    );
 
     // Print messages
     if generate_messages {

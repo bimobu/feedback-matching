@@ -5,7 +5,8 @@ use crate::structs::r#match::Match;
 
 use rand::seq::SliceRandom;
 use rand::Rng;
-use std::collections::HashMap;
+use std::cmp;
+use std::collections::{HashMap, HashSet};
 use time::OffsetDateTime;
 
 const NUMBER_OF_TRIES: i32 = 50;
@@ -59,6 +60,7 @@ pub fn get_complete_givers(
 pub fn match_participants(
     participants_file: &ParticipantsFile,
     past_matching_rounds: &Vec<MatchingRound>,
+    cross_team_round: bool,
     rng: &mut impl Rng,
 ) -> (MatchingRound, Vec<(i32, i64)>) {
     let next_matching_round_id = get_next_matching_round_id(past_matching_rounds);
@@ -67,7 +69,7 @@ pub fn match_participants(
 
     let mut scores_by_group: Vec<(i32, i64)> = Vec::new();
     let mut matches: Vec<Match> = Vec::new();
-    let groups = get_groups(participants_file, next_matching_round_id, &last_match_map);
+    let groups = get_groups(participants_file, cross_team_round, &last_match_map);
 
     for group in &groups {
         let matches_and_score = get_good_matches(&group, &last_match_map, rng);
@@ -96,11 +98,14 @@ pub fn match_participants(
 
 fn get_groups(
     participants_file: &ParticipantsFile,
-    _next_matching_round_id: i32,
-    _last_match_map: &HashMap<(u32, u32), i64>,
+    cross_team_round: bool,
+    last_match_map: &HashMap<(u32, u32), i64>,
 ) -> Vec<MatchingGroup> {
-    // let is_cross_team_round = next_matching_round_id % 2 == 0;
-    let matching_groups: Vec<MatchingGroup> = participants_file
+    if participants_file.groups.len() > 2 {
+        panic!("There are more than 2 groups")
+    }
+
+    let mut matching_groups: Vec<MatchingGroup> = participants_file
         .groups
         .iter()
         .map(|g| MatchingGroup {
@@ -110,29 +115,58 @@ fn get_groups(
         })
         .collect();
 
-    // if is_cross_team_round {
-    //     let complete_givers_per_group =
-    //         get_complete_givers_per_group(&participants_file.groups, last_match_map);
+    // Rudimentary first version of cross-team-matching with only two groups
+    if cross_team_round {
+        let complete_givers_per_group =
+            get_complete_givers_per_group(&participants_file.groups, last_match_map);
 
-    //     for group in &matching_groups {
-    //         let group_complete_givers = complete_givers_per_group
-    //             .get(&group.id)
-    //             .expect("No complete giver for group");
-    //         let clone = matching_groups.clone(); // Warum muss ich das hier in eine eigene Variable packen?
-    //         let other_groups = clone.iter().filter(|g| g.id != group.id);
+        let group_1 = matching_groups[0].clone();
+        let group_2 = matching_groups[1].clone();
 
-    //         for other_group in other_groups {
-    //             let other_group_complete_givers = complete_givers_per_group
-    //                 .get(&other_group.id)
-    //                 .expect("No complete giver for group");
+        let group_1_complete_givers = complete_givers_per_group
+            .get(&group_1.id)
+            .expect("no complete givers for group 1");
+        let group_2_complete_givers = complete_givers_per_group
+            .get(&group_2.id)
+            .expect("no complete givers for group 2");
 
-    //             if group_complete_givers.len() == other_group_complete_givers.len() {
-    //             } else if group_complete_givers.len() <= other_group_complete_givers.len() {
-    //             } else {
-    //             }
-    //         }
-    //     }
-    // }
+        let number_of_switched_participants =
+            cmp::min(group_1_complete_givers.len(), group_2_complete_givers.len());
+
+        let givers_to_be_switched_from_group_1 =
+            group_1_complete_givers[0..number_of_switched_participants].to_vec();
+        let givers_to_be_switched_from_group_2 =
+            group_2_complete_givers[0..number_of_switched_participants].to_vec();
+
+        let giver_ids_to_be_switched_from_group_1: HashSet<u32> =
+            givers_to_be_switched_from_group_1
+                .iter()
+                .map(|g| g.id)
+                .collect();
+        let giver_ids_to_be_switched_from_group_2: HashSet<u32> =
+            givers_to_be_switched_from_group_2
+                .iter()
+                .map(|g| g.id)
+                .collect();
+
+        let group_1_givers: Vec<Participant> = group_1
+            .givers
+            .iter()
+            .cloned()
+            .filter(|g| !giver_ids_to_be_switched_from_group_1.contains(&g.id))
+            .chain(givers_to_be_switched_from_group_2.iter().cloned())
+            .collect();
+        let group_2_givers: Vec<Participant> = group_2
+            .givers
+            .iter()
+            .cloned()
+            .filter(|g| !giver_ids_to_be_switched_from_group_2.contains(&g.id))
+            .chain(givers_to_be_switched_from_group_1.iter().cloned())
+            .collect();
+
+        matching_groups[0].givers = group_1_givers;
+        matching_groups[1].givers = group_2_givers;
+    }
 
     matching_groups
 }
