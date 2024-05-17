@@ -37,7 +37,7 @@ enum Commands {
     CompleteGivers {},
     /// Create a new match
     CreateMatch {
-        /// Not save the output to matches.json
+        /// Save the output to matches.json
         #[arg(short, long)]
         json_save: bool,
         /// Print the messages for each match
