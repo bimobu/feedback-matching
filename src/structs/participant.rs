@@ -17,7 +17,7 @@ pub struct Participant {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct MatchParticipant {
     pub id: u32,
-    pub group_id: Option<i32>,
+    pub group_id: i32,
     pub first_name: String,
     pub last_name: String,
     pub gender: Gender,

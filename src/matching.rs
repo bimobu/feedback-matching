@@ -108,7 +108,7 @@ fn map_participant_to_match_participant(
 ) -> MatchParticipant {
     MatchParticipant {
         id: participant.id,
-        group_id: Some(group_id),
+        group_id,
         first_name: participant.first_name.clone(),
         last_name: participant.last_name.clone(),
         gender: participant.gender.clone(),

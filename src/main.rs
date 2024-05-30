@@ -304,11 +304,11 @@ fn update_matching_rounds_with_group_ids(
 
                     Match {
                         giver: MatchParticipant {
-                            group_id: Some(giver_group_id),
+                            group_id: giver_group_id,
                             ..m.giver.clone()
                         },
                         receiver: MatchParticipant {
-                            group_id: Some(receiver_group_id),
+                            group_id: receiver_group_id,
                             ..m.receiver.clone()
                         },
                         ..m.clone()
