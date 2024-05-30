@@ -1,5 +1,5 @@
 use crate::structs::matching_round::MatchingRound;
-use crate::structs::participant::Participant;
+use crate::structs::participant::{MatchParticipant, Participant};
 use crate::structs::participants_file::{ParticipantsFile, ParticipantsGroup};
 use crate::structs::r#match::Match;
 
@@ -12,15 +12,11 @@ use time::OffsetDateTime;
 const NUMBER_OF_TRIES: i32 = 50;
 const MAX_SCORE: i64 = 1000000;
 
-// struct MatchingParticipant {
-//     // id, first_name, last_name, gender, swapped_from
-// }
-
 #[derive(Debug, Clone)]
 struct MatchingGroup {
     id: i32,
-    givers: Vec<Participant>,
-    receivers: Vec<Participant>,
+    givers: Vec<MatchParticipant>,
+    receivers: Vec<MatchParticipant>,
 }
 
 pub fn calculate_scores(past_matching_rounds: &Vec<MatchingRound>) -> Vec<MatchingRound> {
@@ -96,6 +92,29 @@ pub fn match_participants(
     (matching_round, scores_by_group)
 }
 
+fn map_participants_to_match_participants(
+    participants: &Vec<Participant>,
+    group_id: i32,
+) -> Vec<MatchParticipant> {
+    participants
+        .iter()
+        .map(|p| map_participant_to_match_participant(p, group_id))
+        .collect()
+}
+
+fn map_participant_to_match_participant(
+    participant: &Participant,
+    group_id: i32,
+) -> MatchParticipant {
+    MatchParticipant {
+        id: participant.id,
+        group_id: Some(group_id),
+        first_name: participant.first_name.clone(),
+        last_name: participant.last_name.clone(),
+        gender: participant.gender.clone(),
+    }
+}
+
 fn get_groups(
     participants_file: &ParticipantsFile,
     cross_team_round: bool,
@@ -110,8 +129,8 @@ fn get_groups(
         .iter()
         .map(|g| MatchingGroup {
             id: g.id,
-            givers: g.participants.clone(),
-            receivers: g.participants.clone(),
+            givers: map_participants_to_match_participants(&g.participants, g.id), // they would have to be cloned anyway, so I'm just mapping twice here
+            receivers: map_participants_to_match_participants(&g.participants, g.id),
         })
         .collect();
 
@@ -123,12 +142,21 @@ fn get_groups(
         let group_1 = matching_groups[0].clone();
         let group_2 = matching_groups[1].clone();
 
-        let group_1_complete_givers = complete_givers_per_group
+        let group_1_complete_givers_participants = complete_givers_per_group
             .get(&group_1.id)
             .expect("no complete givers for group 1");
-        let group_2_complete_givers = complete_givers_per_group
+        let group_1_complete_givers = map_participants_to_match_participants(
+            group_1_complete_givers_participants,
+            group_1.id,
+        );
+
+        let group_2_complete_givers_participants = complete_givers_per_group
             .get(&group_2.id)
             .expect("no complete givers for group 2");
+        let group_2_complete_givers = map_participants_to_match_participants(
+            group_2_complete_givers_participants,
+            group_2.id,
+        );
 
         let number_of_switched_participants =
             cmp::min(group_1_complete_givers.len(), group_2_complete_givers.len());
@@ -149,14 +177,14 @@ fn get_groups(
                 .map(|g| g.id)
                 .collect();
 
-        let group_1_givers: Vec<Participant> = group_1
+        let group_1_givers: Vec<MatchParticipant> = group_1
             .givers
             .iter()
             .cloned()
             .filter(|g| !giver_ids_to_be_switched_from_group_1.contains(&g.id))
             .chain(givers_to_be_switched_from_group_2.iter().cloned())
             .collect();
-        let group_2_givers: Vec<Participant> = group_2
+        let group_2_givers: Vec<MatchParticipant> = group_2
             .givers
             .iter()
             .cloned()
@@ -284,8 +312,8 @@ fn get_days_since_matching_round(matching_round: &MatchingRound) -> i64 {
 
 fn get_matches(
     last_match_map: &HashMap<(u32, u32), i64>,
-    mut unmatched_givers: Vec<Participant>,
-    mut unmatched_receivers: Vec<Participant>,
+    mut unmatched_givers: Vec<MatchParticipant>,
+    mut unmatched_receivers: Vec<MatchParticipant>,
 ) -> Option<Vec<Match>> {
     let mut matches: Vec<Match> = Vec::new();
 
@@ -314,7 +342,7 @@ fn get_matches(
 fn get_optimal_receiver_index_and_score(
     last_match_map: &HashMap<(u32, u32), i64>,
     giver_id: u32,
-    unmatched_receivers: &Vec<Participant>,
+    unmatched_receivers: &Vec<MatchParticipant>,
 ) -> Option<(usize, i64)> {
     let mut best_receiver_score = i64::MIN;
     let mut best_receiver_index = None;
@@ -335,7 +363,7 @@ fn get_optimal_receiver_index_and_score(
     best_receiver_index
 }
 
-fn create_match(giver: Participant, receiver: Participant, score: i64) -> Match {
+fn create_match(giver: MatchParticipant, receiver: MatchParticipant, score: i64) -> Match {
     return Match {
         giver,
         receiver,

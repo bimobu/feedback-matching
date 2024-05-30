@@ -22,6 +22,10 @@
                 "id": {
                   "type": "integer"
                 },
+                "group_id": {
+                  "type": "integer",
+                  "nullable": true
+                },
                 "first_name": {
                   "type": "string"
                 },
@@ -41,6 +45,10 @@
               "properties": {
                 "id": {
                   "type": "integer"
+                },
+                "group_id": {
+                  "type": "integer",
+                  "nullable": true
                 },
                 "first_name": {
                   "type": "string"

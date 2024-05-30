@@ -11,7 +11,11 @@ use matching::{calculate_scores, get_complete_givers, match_participants};
 use messages::print_messages_for_round;
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
-use structs::matching_round::MatchingRound;
+use std::collections::HashMap;
+use structs::{
+    matching_round::MatchingRound, participant::MatchParticipant,
+    participants_file::ParticipantsFile, r#match::Match,
+};
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -57,6 +61,8 @@ enum Commands {
     },
     /// Execute data migrations
     CalculateAndSaveScores {},
+    /// Execute data migrations
+    AddGroupIdsToPastMatchParticipants {},
 }
 
 fn main() {
@@ -84,6 +90,9 @@ fn main() {
             &data_path,
         ),
         Commands::CalculateAndSaveScores {} => calculate_and_save_scores(&data_path),
+        Commands::AddGroupIdsToPastMatchParticipants {} => {
+            add_group_ids_to_past_match_participants(&data_path)
+        }
     }
 }
 
@@ -242,4 +251,75 @@ fn calculate_and_save_scores(data_path: &String) {
     let past_matching_rounds = read_matching_rounds(&matches_file_path(data_path));
     let new_matching_rounds = calculate_scores(&past_matching_rounds);
     update_all_existing_rounds(&matches_file_path(data_path), &new_matching_rounds);
+}
+
+fn add_group_ids_to_past_match_participants(data_path: &String) {
+    let past_matching_rounds = read_matching_rounds(&matches_file_path(data_path));
+    let participants_file = read_participants(&participants_file_path(data_path));
+
+    let new_matching_rounds =
+        update_matching_rounds_with_group_ids(&past_matching_rounds, &participants_file);
+
+    update_all_existing_rounds(&matches_file_path(data_path), &new_matching_rounds);
+}
+
+fn get_group_id_for_participant(map: HashMap<u32, i32>, participant_id: &u32) -> i32 {
+    *map.get(&participant_id)
+        .expect("Could not find group for participant")
+}
+
+fn create_participant_group_map(participants_file: &ParticipantsFile) -> HashMap<u32, i32> {
+    participants_file
+        .groups
+        .iter()
+        .fold(HashMap::new(), |mut acc, group| {
+            group
+                .participants
+                .iter()
+                .chain(group.excluded_participants.iter())
+                .for_each(|participant| {
+                    acc.insert(participant.id, group.id);
+                });
+            acc
+        })
+}
+
+fn update_matching_rounds_with_group_ids(
+    past_matching_rounds: &Vec<MatchingRound>,
+    participants_file: &ParticipantsFile,
+) -> Vec<MatchingRound> {
+    let participant_group_map = create_participant_group_map(participants_file);
+
+    past_matching_rounds
+        .iter()
+        .map(|round| {
+            let updated_matches = round
+                .matches
+                .iter()
+                .map(|m| {
+                    let giver_group_id =
+                        get_group_id_for_participant(participant_group_map.clone(), &m.giver.id);
+                    let receiver_group_id =
+                        get_group_id_for_participant(participant_group_map.clone(), &m.receiver.id);
+
+                    Match {
+                        giver: MatchParticipant {
+                            group_id: Some(giver_group_id),
+                            ..m.giver.clone()
+                        },
+                        receiver: MatchParticipant {
+                            group_id: Some(receiver_group_id),
+                            ..m.receiver.clone()
+                        },
+                        ..m.clone()
+                    }
+                })
+                .collect();
+
+            MatchingRound {
+                matches: updated_matches,
+                ..round.clone()
+            }
+        })
+        .collect()
 }
