@@ -33,6 +33,11 @@ enum Commands {
         #[arg(short, long, default_value_t = 4)]
         intervall_weeks: i32,
     },
+    /// Print the messages for a past matching round
+    PastRoundSummary {
+        /// The matching round id to print messages for
+        matching_round_id: Option<i32>,
+    },
     /// Print the complete givers for every group
     CompleteGivers {},
     /// Create a new match
@@ -62,6 +67,9 @@ fn main() {
             matching_round_id,
             intervall_weeks,
         } => print_messages_for_past_round(matching_round_id, intervall_weeks, &data_path),
+        Commands::PastRoundSummary { matching_round_id } => {
+            print_summary_for_past_round(matching_round_id, &data_path)
+        }
         Commands::CompleteGivers {} => print_complete_givers(&data_path),
         Commands::CreateMatch {
             json_save: save_json,
@@ -115,6 +123,39 @@ fn print_messages_for_past_round(
             match matching_round {
                 Some(matching_round) => {
                     print_messages_for_round(matching_round, intervall_weeks);
+                }
+                None => {
+                    println!("No matching round with id {matching_round_id} has been found");
+                }
+            };
+        }
+    }
+}
+
+fn print_summary_for_past_round(matching_round_id: Option<i32>, data_path: &String) {
+    let past_matching_rounds = read_matching_rounds(&matches_file_path(data_path));
+
+    match matching_round_id {
+        None => {
+            let last_matching_round = past_matching_rounds.last();
+
+            match last_matching_round {
+                Some(matching_round) => {
+                    print_result(matching_round, &Vec::new());
+                }
+                None => {
+                    println!("No matches have been created yet.");
+                }
+            };
+        }
+        Some(matching_round_id) => {
+            let matching_round = past_matching_rounds
+                .iter()
+                .find(|r| r.id == matching_round_id);
+
+            match matching_round {
+                Some(matching_round) => {
+                    print_result(matching_round, &Vec::new());
                 }
                 None => {
                     println!("No matching round with id {matching_round_id} has been found");
