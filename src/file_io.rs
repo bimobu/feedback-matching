@@ -7,19 +7,22 @@ use serde_json::{from_reader, Value};
 use std::fs::{File, OpenOptions};
 use std::io::{Read, Seek, SeekFrom};
 
+const MATCHES_SCHEMA: &[u8] = include_bytes!("../data/schema/matches_schema.json");
+const PARTICIPANTS_SCHEMA: &[u8] = include_bytes!("../data/schema/participants_schema.json");
+
 pub fn read_participants(file_path: &str) -> ParticipantsFile {
-    read::<ParticipantsFile>(file_path, "./data/schema/participants_schema.json")
+    read::<ParticipantsFile>(file_path, PARTICIPANTS_SCHEMA)
 }
 
 pub fn read_matching_rounds(file_path: &str) -> Vec<MatchingRound> {
-    read::<Vec<MatchingRound>>(file_path, "./data/schema/matches_schema.json")
+    read::<Vec<MatchingRound>>(file_path, MATCHES_SCHEMA)
 }
 
-fn read<T>(file_path: &str, schema_path: &str) -> T
+fn read<T>(file_path: &str, schema: &[u8]) -> T
 where
     T: DeserializeOwned,
 {
-    let compiled_schema = load_schema(schema_path);
+    let compiled_schema = load_schema(schema);
 
     let data_string = read_string(file_path);
     let json_data: Value =
@@ -54,11 +57,9 @@ fn read_string(file_path: &str) -> String {
     contents
 }
 
-fn load_schema(schema_path: &str) -> JSONSchema {
-    let schema_string = read_string(schema_path);
-    let schema: Value =
-        serde_json::from_str(schema_string.as_str()).expect("Failed to parse JSON Schema");
-    JSONSchema::compile(&schema).expect("Failed to compile JSON Schema")
+fn load_schema(schema: &[u8]) -> JSONSchema {
+    let schema: Value = serde_json::from_slice(schema).expect("Failed to parse Schema");
+    JSONSchema::compile(&schema).expect("Failed to compile Schema")
 }
 
 pub fn save_matching_round(file_path: &str, round: MatchingRound) {
@@ -77,7 +78,7 @@ pub fn save_matching_round(file_path: &str, round: MatchingRound) {
 }
 
 pub fn update_all_existing_rounds(file_path: &str, existing_rounds: &Vec<MatchingRound>) {
-    let schema = load_schema("./data/schema/matches_schema.json");
+    let schema = load_schema(MATCHES_SCHEMA);
 
     let value = serde_json::to_value(&existing_rounds).expect("Failed to serialize MatchingRound");
     let validation_result = schema.validate(&value);
