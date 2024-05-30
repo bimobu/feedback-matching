@@ -234,10 +234,18 @@ fn print_result(matching_round: &MatchingRound, scores_by_group: &Vec<(i32, i64)
     println!("\n### Result: ###\n");
 
     for group_match in &matching_round.matches {
-        let giver = group_match.giver.full_name();
-        let receiver = group_match.receiver.full_name();
+        let giver_name = group_match.giver.full_name();
+        let giver_group = group_match.giver.group_id;
+        let receiver_name = group_match.receiver.full_name();
+        let receiver_group = group_match.receiver.group_id;
         let score = group_match.score;
-        println!("{giver} => {receiver}, score: {score}");
+        let switch_info = match giver_group != receiver_group {
+            true => {
+                format!("Cross-Team Match between {giver_group} and {receiver_group}")
+            }
+            false => format!("In-Team Match in group {giver_group}"),
+        };
+        println!("{switch_info}: {giver_name} => {receiver_name}, score: {score}");
     }
 
     println!();
