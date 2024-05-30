@@ -33,6 +33,8 @@ Es gibt Donnerstags einen Blocker-Termin, den ihr dafür nutzen könnt. \
 Wenn dir aber schon vorher etwas auffällt, was du mitteilen möchtest, kannst du das gerne auch schon vorher tun! \
 Es ist auch nicht schlimm wenn dir mal nichts einfällt was du sagen kannst. Dann kannst du {ihn_sie} auch einfach fragen, ob es für {ihn_sie} ok ist, wenn ihr es ausfallen lasst. \
 \n
+Denk auch daran, dass du gerne Feedback zu einem bestimmten Thema oder einer bestimmten Frage einfordern kannst, wenn du das nächste Mal Feedback bekommst.
+\n
 Viel Spaß 😊
 ---"
       );
