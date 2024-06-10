@@ -35,3 +35,26 @@ impl MatchParticipant {
         format!("{} {}", self.first_name, self.last_name)
     }
 }
+
+pub fn map_participants_to_match_participants(
+    participants: &Vec<Participant>,
+    group_id: i32,
+) -> Vec<MatchParticipant> {
+    participants
+        .iter()
+        .map(|p| map_participant_to_match_participant(p, group_id))
+        .collect()
+}
+
+pub fn map_participant_to_match_participant(
+    participant: &Participant,
+    group_id: i32,
+) -> MatchParticipant {
+    MatchParticipant {
+        id: participant.id,
+        group_id,
+        first_name: participant.first_name.clone(),
+        last_name: participant.last_name.clone(),
+        gender: participant.gender.clone(),
+    }
+}
