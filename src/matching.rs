@@ -1,7 +1,10 @@
+use crate::complete_givers::get_complete_givers_per_group;
+use crate::last_match_map::{self, get_days_since_last_match};
 use crate::structs::matching_round::MatchingRound;
-use crate::structs::participant::{MatchParticipant, Participant};
-use crate::structs::participants_file::{ParticipantsFile, ParticipantsGroup};
+use crate::structs::participant::{map_participants_to_match_participants, MatchParticipant};
+use crate::structs::participants_file::ParticipantsFile;
 use crate::structs::r#match::Match;
+use crate::{MAX_SCORE, NUMBER_OF_TRIES};
 
 use rand::seq::SliceRandom;
 use rand::Rng;
@@ -9,48 +12,13 @@ use std::cmp;
 use std::collections::{HashMap, HashSet};
 use time::OffsetDateTime;
 
-const NUMBER_OF_TRIES: i32 = 50;
-const MAX_SCORE: i64 = 1000000;
+use last_match_map::get_last_match_map;
 
 #[derive(Debug, Clone)]
 struct MatchingGroup {
     id: i32,
     givers: Vec<MatchParticipant>,
     receivers: Vec<MatchParticipant>,
-}
-
-pub fn calculate_scores(past_matching_rounds: &Vec<MatchingRound>) -> Vec<MatchingRound> {
-    let mut new_matching_rounds = past_matching_rounds.clone();
-    let mut passed_matching_rounds = Vec::<MatchingRound>::new();
-
-    for matching_round in &mut new_matching_rounds {
-        let last_match_map = get_last_match_map(&passed_matching_rounds);
-        for group_match in &mut matching_round.matches {
-            let score = get_days_since_last_match(
-                &last_match_map,
-                group_match.giver.id,
-                group_match.receiver.id,
-            );
-
-            group_match.score = score;
-        }
-
-        passed_matching_rounds.push(matching_round.clone())
-    }
-
-    new_matching_rounds
-}
-
-pub fn get_complete_givers(
-    participants_file: &ParticipantsFile,
-    past_matching_rounds: &Vec<MatchingRound>,
-) -> HashMap<i32, Vec<Participant>> {
-    let last_match_map = get_last_match_map(past_matching_rounds);
-    let groups = &participants_file.groups;
-
-    let complete_givers_per_group = get_complete_givers_per_group(&groups, &last_match_map);
-
-    complete_givers_per_group
 }
 
 pub fn match_participants(
@@ -90,29 +58,6 @@ pub fn match_participants(
     };
 
     (matching_round, scores_by_group)
-}
-
-fn map_participants_to_match_participants(
-    participants: &Vec<Participant>,
-    group_id: i32,
-) -> Vec<MatchParticipant> {
-    participants
-        .iter()
-        .map(|p| map_participant_to_match_participant(p, group_id))
-        .collect()
-}
-
-fn map_participant_to_match_participant(
-    participant: &Participant,
-    group_id: i32,
-) -> MatchParticipant {
-    MatchParticipant {
-        id: participant.id,
-        group_id,
-        first_name: participant.first_name.clone(),
-        last_name: participant.last_name.clone(),
-        gender: participant.gender.clone(),
-    }
 }
 
 fn get_groups(
@@ -199,53 +144,6 @@ fn get_groups(
     matching_groups
 }
 
-fn get_complete_givers_per_group(
-    groups: &Vec<ParticipantsGroup>,
-    last_match_map: &HashMap<(u32, u32), i64>,
-) -> HashMap<i32, Vec<Participant>> {
-    groups
-        .iter()
-        .map(|group| {
-            (
-                group.id,
-                get_givers_who_have_matched_everyone_from_group(
-                    &group.participants,
-                    &last_match_map,
-                ),
-            )
-        })
-        .collect()
-}
-
-fn get_givers_who_have_matched_everyone_from_group(
-    participants: &Vec<Participant>,
-    last_match_map: &HashMap<(u32, u32), i64>,
-) -> Vec<Participant> {
-    participants
-        .iter()
-        .filter(|giver| has_giver_matched_all_receivers(&last_match_map, giver, participants))
-        .cloned()
-        .collect()
-}
-
-fn has_giver_matched_all_receivers(
-    last_match_map: &HashMap<(u32, u32), i64>,
-    giver: &Participant,
-    participants: &Vec<Participant>,
-) -> bool {
-    for receiver in participants {
-        if giver.id == receiver.id {
-            continue;
-        }
-
-        if !last_match_map.contains_key(&(giver.id, receiver.id)) {
-            return false;
-        }
-    }
-
-    true
-}
-
 fn get_good_matches(
     matching_group: &MatchingGroup,
     last_match_map: &HashMap<(u32, u32), i64>,
@@ -285,29 +183,6 @@ fn get_good_matches(
     }
 
     best_match_and_score
-}
-
-fn get_last_match_map(past_matching_rounds: &Vec<MatchingRound>) -> HashMap<(u32, u32), i64> {
-    let mut last_match_map: HashMap<(u32, u32), i64> = HashMap::new();
-
-    for matching_round in past_matching_rounds {
-        let days_since_matching_round = get_days_since_matching_round(matching_round);
-
-        for past_match in &matching_round.matches {
-            last_match_map.insert(
-                (past_match.giver.id, past_match.receiver.id),
-                days_since_matching_round,
-            );
-        }
-    }
-
-    return last_match_map;
-}
-
-fn get_days_since_matching_round(matching_round: &MatchingRound) -> i64 {
-    let today = OffsetDateTime::now_utc().date();
-    let time_since_last_match = today - matching_round.date;
-    return time_since_last_match.whole_days();
 }
 
 fn get_matches(
@@ -381,21 +256,6 @@ fn score_matches(matches: &Vec<Match>) -> i64 {
     } else {
         sum / number_of_matches
     }
-}
-
-fn get_days_since_last_match(
-    last_match_map: &HashMap<(u32, u32), i64>,
-    giver_id: u32,
-    receiver_id: u32,
-) -> i64 {
-    let days_since_last_match_option = last_match_map.get(&(giver_id, receiver_id));
-
-    let days_since_last_match = match &days_since_last_match_option {
-        Some(duration) => **duration,
-        None => MAX_SCORE,
-    };
-
-    days_since_last_match
 }
 
 fn get_next_matching_round_id(past_matching_rounds: &Vec<MatchingRound>) -> i32 {
