@@ -1,18 +1,16 @@
-mod complete_givers;
 mod file_io;
-mod last_match_map;
 mod matching;
-mod messages;
 mod migrations;
 mod structs;
 
 use clap::{Parser, Subcommand};
-use complete_givers::get_complete_givers;
 use file_io::{
     read_matching_rounds, read_participants, save_matching_round, update_all_existing_rounds,
 };
-use matching::match_participants;
-use messages::print_messages_for_round;
+use matching::{
+    complete_givers::get_complete_givers, matching::match_participants,
+    messages::print_messages_for_round,
+};
 use migrations::{calculate_scores, update_matching_rounds_with_group_ids};
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
