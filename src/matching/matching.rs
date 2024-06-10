@@ -1,5 +1,3 @@
-use crate::complete_givers::get_complete_givers_per_group;
-use crate::last_match_map::{self, get_days_since_last_match};
 use crate::structs::matching_round::MatchingRound;
 use crate::structs::participant::{map_participants_to_match_participants, MatchParticipant};
 use crate::structs::participants_file::ParticipantsFile;
@@ -12,7 +10,8 @@ use std::cmp;
 use std::collections::{HashMap, HashSet};
 use time::OffsetDateTime;
 
-use last_match_map::get_last_match_map;
+use super::complete_givers::get_complete_givers_per_group;
+use super::last_match_map::{get_days_since_last_match, get_last_match_map};
 
 #[derive(Debug, Clone)]
 struct MatchingGroup {

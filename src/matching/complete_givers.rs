@@ -1,11 +1,10 @@
-use crate::last_match_map;
 use crate::structs::matching_round::MatchingRound;
 use crate::structs::participant::Participant;
 use crate::structs::participants_file::{ParticipantsFile, ParticipantsGroup};
 
 use std::collections::HashMap;
 
-use last_match_map::get_last_match_map;
+use super::last_match_map::get_last_match_map;
 
 pub fn get_complete_givers(
     participants_file: &ParticipantsFile,

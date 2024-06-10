@@ -1,12 +1,10 @@
 use std::collections::HashMap;
 
-use crate::last_match_map::{self, get_days_since_last_match};
+use crate::matching::last_match_map::{get_days_since_last_match, get_last_match_map};
 use crate::structs::matching_round::MatchingRound;
 use crate::structs::participant::MatchParticipant;
 use crate::structs::participants_file::ParticipantsFile;
 use crate::structs::r#match::Match;
-
-use last_match_map::get_last_match_map;
 
 pub fn calculate_scores(past_matching_rounds: &Vec<MatchingRound>) -> Vec<MatchingRound> {
     let mut new_matching_rounds = past_matching_rounds.clone();
