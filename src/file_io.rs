@@ -109,6 +109,9 @@ pub fn update_all_existing_rounds(file_path: &str, existing_rounds: &Vec<Matchin
 
     file.seek(SeekFrom::Start(0))
         .expect("Failed to seek to the beginning of the file");
+
+    file.set_len(0).expect("Failed to truncate the file");
+
     serde_json::to_writer_pretty(&mut file, &existing_rounds)
         .expect("Failed to write matching rounds to file");
 }
