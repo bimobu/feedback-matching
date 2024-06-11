@@ -61,6 +61,8 @@ enum Commands {
         #[arg(short, long)]
         cross_team_round: bool,
     },
+    /// Deletes the last match
+    DeleteMatch {},
     /// Execute data migrations
     CalculateAndSaveScores {},
     /// Execute data migrations
@@ -91,6 +93,7 @@ fn main() {
             cross_team_round,
             &data_path,
         ),
+        Commands::DeleteMatch {} => delete_match(&data_path),
         Commands::CalculateAndSaveScores {} => calculate_and_save_scores(&data_path),
         Commands::AddGroupIdsToPastMatchParticipants {} => {
             add_group_ids_to_past_match_participants(&data_path)
@@ -249,6 +252,12 @@ fn print_result(matching_round: &MatchingRound) {
         };
         println!("{switch_info}: {giver_name} => {receiver_name}, score: {score}");
     }
+}
+
+fn delete_match(data_path: &String) {
+    let mut past_matching_rounds = read_matching_rounds(&matches_file_path(data_path));
+    past_matching_rounds.pop();
+    update_all_existing_rounds(&matches_file_path(data_path), &past_matching_rounds);
 }
 
 fn calculate_and_save_scores(data_path: &String) {
