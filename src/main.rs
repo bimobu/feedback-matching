@@ -152,7 +152,7 @@ fn print_summary_for_past_round(matching_round_id: Option<i32>, data_path: &Stri
 
             match last_matching_round {
                 Some(matching_round) => {
-                    print_result(matching_round, &Vec::new());
+                    print_result(matching_round);
                 }
                 None => {
                     println!("No matches have been created yet.");
@@ -166,7 +166,7 @@ fn print_summary_for_past_round(matching_round_id: Option<i32>, data_path: &Stri
 
             match matching_round {
                 Some(matching_round) => {
-                    print_result(matching_round, &Vec::new());
+                    print_result(matching_round);
                 }
                 None => {
                     println!("No matching round with id {matching_round_id} has been found");
@@ -211,7 +211,7 @@ fn create_match(
 
     // Match participants
     let mut rng = ChaCha8Rng::from_entropy();
-    let (matching_round, scores_by_group) = match_participants(
+    let matching_round = match_participants(
         &participants_file,
         &past_matching_rounds,
         cross_team_round,
@@ -224,7 +224,7 @@ fn create_match(
         print_messages_for_round(&matching_round, intervall_weeks);
     }
 
-    print_result(&matching_round, &scores_by_group);
+    print_result(&matching_round);
 
     // Save matches to JSON file
     if save_json {
@@ -232,7 +232,7 @@ fn create_match(
     }
 }
 
-fn print_result(matching_round: &MatchingRound, scores_by_group: &Vec<(i32, i64)>) {
+fn print_result(matching_round: &MatchingRound) {
     println!("\n### Result: ###\n");
 
     for group_match in &matching_round.matches {
@@ -248,12 +248,6 @@ fn print_result(matching_round: &MatchingRound, scores_by_group: &Vec<(i32, i64)
             false => format!("In-Team Match in group {giver_group}"),
         };
         println!("{switch_info}: {giver_name} => {receiver_name}, score: {score}");
-    }
-
-    println!();
-
-    for (group_id, score) in scores_by_group {
-        println!("Group {group_id} has a score of {score}");
     }
 }
 
