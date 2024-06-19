@@ -7,7 +7,11 @@ pub fn print_messages_for_round(matching_round: &MatchingRound, intervall_weeks:
     let number_of_weeks = match intervall_weeks {
         ..=2 => "zwei",
         3 => "drei",
-        4.. => "vier",
+        4 => "vier",
+        5 => "fünf",
+        6 => "sechs",
+        7 => "sieben",
+        8.. => "acht",
     };
     println!("\n");
 
@@ -33,7 +37,7 @@ Es gibt Donnerstags einen Blocker-Termin, den ihr dafür nutzen könnt. \
 Wenn dir aber schon vorher etwas auffällt, was du mitteilen möchtest, kannst du das gerne auch schon vorher tun! \
 Es ist auch nicht schlimm wenn dir mal nichts einfällt was du sagen kannst. Dann kannst du {ihn_sie} auch einfach fragen, ob es für {ihn_sie} ok ist, wenn ihr es ausfallen lasst. \
 \n
-Denk auch daran, dass du gerne Feedback zu einem bestimmten Thema oder einer bestimmten Frage einfordern kannst, wenn du das nächste Mal Feedback bekommst.
+Denk auch daran, dass du gerne Feedback zu einem bestimmten Thema oder einer bestimmten Frage einfordern kannst, wenn du das nächste Mal Feedback bekommst. \
 \n
 Viel Spaß 😊
 ---"
